@@ -12,6 +12,7 @@ export interface SetupService {
   checkUvInstalled(): Promise<boolean>;
   downloadAndInstallUv(): Promise<void>;
   runUvSync(): Promise<void>;
+  copyPythonProject(): Promise<void>;
 }
 
 export interface PythonProcessService {

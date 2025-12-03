@@ -4,23 +4,30 @@ import { app } from 'electron';
 export const getPaths = () => {
   const userDataPath = app.getPath('userData');
 
-  // In packaged mode, the Python project should be in resourcesPath
+  // In packaged mode, the Python project should be in resourcesPath (source files)
+  // but we'll work in userData (writable location)
   // In dev mode, use the actual project root
   let projectRoot: string;
+  let resourcesRoot: string;
+
   if (app.isPackaged) {
-    // When packaged, the entire project (including Python code) should be in resourcesPath
-    projectRoot = process.resourcesPath || path.dirname(app.getPath('exe'));
+    // When packaged, source files are in resourcesPath
+    resourcesRoot = process.resourcesPath || path.dirname(app.getPath('exe'));
+    // But we work in userData for write permissions
+    projectRoot = path.join(userDataPath, 'python-project');
   } else {
     // In development, go up from app/src/utils to the project root
     projectRoot = path.resolve(__dirname, '../../..');
+    resourcesRoot = projectRoot;
   }
 
   return {
     userData: userDataPath,
     uvBin: path.join(userDataPath, 'uv', process.platform === 'win32' ? 'uv.exe' : 'uv'),
     projectRoot,
+    resourcesRoot,
     frontendDist: app.isPackaged
-      ? path.join(projectRoot, 'frontend', 'dist')
+      ? path.join(resourcesRoot, 'frontend', 'dist')
       : path.resolve(projectRoot, 'frontend/dist'),
   };
 };
