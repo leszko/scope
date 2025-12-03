@@ -1,4 +1,4 @@
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import { spawn, ChildProcessWithoutNullStreams, execSync } from 'child_process';
 import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
@@ -30,7 +30,6 @@ export class ScopePythonProcessService implements PythonProcessService {
     } else {
       // Try to find uv in PATH (using enhanced PATH for macOS app launches)
       try {
-        const { execSync } = await import('child_process');
         execSync('uv --version', {
           stdio: 'ignore',
           env: {
@@ -121,7 +120,24 @@ export class ScopePythonProcessService implements PythonProcessService {
   stopServer(): void {
     if (this.serverProcess) {
       logger.info('Stopping server...');
-      this.serverProcess.kill('SIGINT');
+      const pid = this.serverProcess.pid;
+
+      if (process.platform === 'win32' && pid) {
+        // On Windows, kill the entire process tree using taskkill
+        // This ensures child processes (like the Python server spawned by uv) are also terminated
+        try {
+          execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
+          logger.info(`Killed process tree for PID ${pid}`);
+        } catch (err) {
+          logger.warn(`Failed to kill process tree: ${err}`);
+          // Fallback to regular kill
+          this.serverProcess.kill('SIGINT');
+        }
+      } else {
+        // On Unix-like systems, SIGINT should propagate to child processes
+        this.serverProcess.kill('SIGINT');
+      }
+
       this.serverProcess = null;
     }
   }
