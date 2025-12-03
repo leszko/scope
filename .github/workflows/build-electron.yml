@@ -85,7 +85,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           # Windows code signing (optional)
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets. _KEY_PASSWORD }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
