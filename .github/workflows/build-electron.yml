@@ -36,9 +36,19 @@ jobs:
         with:
           node-version: '23'
           cache: 'npm'
-          cache-dependency-path: app/package-lock.json
+          cache-dependency-path: |
+            app/package-lock.json
+            frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Install app dependencies
         working-directory: ./app
         run: npm ci
 
