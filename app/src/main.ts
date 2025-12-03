@@ -353,10 +353,15 @@ app.on('ready', async () => {
   if (appState.needsSetup) {
     logger.info('Setup needed, running setup...');
     try {
+      // First, copy Python project files to userData (if packaged)
+      sendSetupStatus(SETUP_STATUS.COPYING_PROJECT);
+      await setupService.copyPythonProject();
+      // Then run setup (download uv, run uv sync, etc.)
       await runSetup();
       logger.info('Setup completed');
     } catch (err) {
       logger.error('Setup error caught:', err);
+      sendSetupStatus(SETUP_STATUS.SETUP_ERROR);
       throw err;
     }
   } else {
@@ -419,6 +424,9 @@ app.on('activate', async () => {
       appState.needsSetup = setupService.isSetupNeeded();
 
       if (appState.needsSetup) {
+        // Copy Python project files first (if packaged)
+        sendSetupStatus(SETUP_STATUS.COPYING_PROJECT);
+        await setupService.copyPythonProject();
         await runSetup();
       }
 
