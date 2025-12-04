@@ -1,5 +1,5 @@
 appId: live.daydream.scope
-productName: Daydream Scope
+productName: DaydreamScope
 copyright: Copyright © 2024 Daydream
 
 # Directories
@@ -83,7 +83,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: Daydream Scope
+  shortcutName: DaydreamScope
   installerIcon: assets/icon.ico
   uninstallerIcon: assets/icon.ico
   deleteAppDataOnUninstall: false # Ask user about data deletion

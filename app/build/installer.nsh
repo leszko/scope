@@ -125,7 +125,7 @@
 !macro customUnInstall
     ; Optionally clean up UV and Python project on uninstall
     ; Note: We don't remove these by default to preserve user data
-    ; Users can manually delete %APPDATA%\Daydream Scope if needed
+    ; Users can manually delete %APPDATA%\DaydreamScope if needed
 
     ; Show what will be kept
     ReadEnvStr $0 APPDATA

@@ -11,7 +11,7 @@ import path from 'path';
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: "Daydream Scope",
+    name: "DaydreamScope",
     executableName: "daydream-scope",
     icon: path.resolve(__dirname, "assets", "icon"),
     asar: false, // We need to access Python files, so disable asar
@@ -70,7 +70,7 @@ const config: ForgeConfig = {
       },
     }),
     new MakerDMG({
-      name: "Daydream Scope",
+      name: "DaydreamScope",
     }),
   ],
   plugins: [

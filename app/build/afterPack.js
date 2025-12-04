@@ -14,7 +14,7 @@ exports.default = async function afterPack(context) {
 
   // Determine resources path based on platform
   if (electronPlatformName === 'darwin') {
-    resourcesPath = path.join(appOutDir, 'Daydream Scope.app', 'Contents', 'Resources');
+    resourcesPath = path.join(appOutDir, 'DaydreamScope.app', 'Contents', 'Resources');
   } else if (electronPlatformName === 'win32') {
     resourcesPath = path.join(appOutDir, 'resources');
   } else {

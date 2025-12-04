@@ -1,6 +1,13 @@
 #!/bin/bash
 # Post-installation script for Linux
 
+# Fix chrome-sandbox permissions (required for Electron sandbox)
+INSTALL_DIR="/opt/DaydreamScope"
+if [ -f "$INSTALL_DIR/chrome-sandbox" ]; then
+    chmod 4755 "$INSTALL_DIR/chrome-sandbox"
+    echo "Set chrome-sandbox permissions to 4755"
+fi
+
 # Update desktop database
 if command -v update-desktop-database > /dev/null 2>&1; then
     update-desktop-database -q
