@@ -72,6 +72,7 @@ export class ScopeElectronAppService {
       title: 'Daydream Scope',
       icon: windowIcon,
       backgroundColor: '#0f0f0f', // Dark background to match theme
+      darkTheme: true, // Force dark theme for window frame (Linux/Windows)
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : (process.platform === 'win32' ? 'hidden' : 'default'),
       titleBarOverlay: process.platform === 'win32' ? {
         color: '#0f0f0f',
