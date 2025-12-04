@@ -5,6 +5,10 @@ import { app } from 'electron';
 const LOG_DIR = path.join(app.getPath('userData'), 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'main.log');
 
+export function getLogPath(): string {
+  return LOG_FILE;
+}
+
 // Ensure log directory exists
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });

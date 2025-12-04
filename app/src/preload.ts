@@ -83,4 +83,8 @@ contextBridge.exposeInMainWorld('scope', {
   getSetupStatus: () => ipcRenderer.invoke(IPC_CHANNELS.GET_SETUP_STATUS),
 
   getServerStatus: () => ipcRenderer.invoke(IPC_CHANNELS.GET_SERVER_STATUS),
+
+  showContextMenu: () => ipcRenderer.invoke(IPC_CHANNELS.SHOW_CONTEXT_MENU),
+
+  getLogs: () => ipcRenderer.invoke(IPC_CHANNELS.GET_LOGS),
 });

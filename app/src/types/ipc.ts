@@ -8,6 +8,11 @@ export const IPC_CHANNELS = {
   GET_SERVER_STATUS: 'get-server-status',
   SERVER_STATUS: 'server-status',
   SERVER_ERROR: 'server-error',
+
+  // Logs
+  SHOW_LOGS: 'show-logs',
+  GET_LOGS: 'get-logs',
+  SHOW_CONTEXT_MENU: 'show-context-menu',
 } as const;
 
 export const SETUP_STATUS = {

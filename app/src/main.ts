@@ -97,6 +97,32 @@ let setupService: ScopeSetupService;
 let pythonProcessService: ScopePythonProcessService;
 let electronAppService: ScopeElectronAppService;
 
+// Request single instance lock for Windows Jump List functionality
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Another instance is already running, quit this one
+  app.quit();
+} else {
+  // Handle second instance (e.g., when user clicks Jump List item while app is running)
+  app.on('second-instance', (_event, commandLine) => {
+    // Someone tried to run a second instance, focus our window and handle args
+    if (appState.mainWindow) {
+      if (appState.mainWindow.isMinimized()) {
+        appState.mainWindow.restore();
+      }
+      appState.mainWindow.focus();
+    }
+
+    // Check if launched with --show-logs
+    if (commandLine.includes('--show-logs')) {
+      if (electronAppService) {
+        electronAppService.showLogsWindow();
+      }
+    }
+  });
+}
+
 /**
  * IPC Handlers with validation - register early so they're available when renderer loads
  */
@@ -110,6 +136,19 @@ ipcMain.handle(IPC_CHANNELS.GET_SETUP_STATUS, async () => {
 
 ipcMain.handle(IPC_CHANNELS.GET_SERVER_STATUS, async () => {
   return { isRunning: appState.isServerRunning };
+});
+
+ipcMain.handle(IPC_CHANNELS.SHOW_CONTEXT_MENU, async () => {
+  if (electronAppService) {
+    electronAppService.showContextMenu();
+  }
+});
+
+ipcMain.handle(IPC_CHANNELS.GET_LOGS, async () => {
+  if (electronAppService) {
+    return electronAppService.getLogs();
+  }
+  return 'Service not initialized';
 });
 
 // Setup error callback for Python process
@@ -344,6 +383,9 @@ app.on('ready', async () => {
 
   // Create system tray
   electronAppService.createTray();
+
+  // Check if launched with special arguments (e.g., --show-logs from Jump List)
+  electronAppService.checkLaunchArgs();
 
   // Wait for window to load before proceeding (with timeout)
   logger.info('Waiting for window to load...');

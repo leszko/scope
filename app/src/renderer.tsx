@@ -10,6 +10,8 @@ declare global {
       onSetupStatus: (callback: (status: string) => void) => void;
       onServerStatus: (callback: (isRunning: boolean) => void) => void;
       onServerError: (callback: (error: string) => void) => void;
+      showContextMenu: () => Promise<void>;
+      getLogs: () => Promise<string>;
     };
   }
 }
@@ -40,6 +42,8 @@ const waitForScope = (): Promise<typeof window.scope> => {
         onSetupStatus: () => {},
         onServerStatus: () => {},
         onServerError: () => {},
+        showContextMenu: () => Promise.resolve(),
+        getLogs: () => Promise.resolve(''),
       } as typeof window.scope);
     }, 5000);
   });
@@ -54,12 +58,25 @@ titleBar.style.cssText = `
   top: 0;
   left: 0;
   right: 0;
-  height: 28px;
+  height: 32px;
   -webkit-app-region: drag;
   z-index: 10000;
   pointer-events: auto;
 `;
 document.body.appendChild(titleBar);
+
+// Add right-click context menu to title bar
+titleBar.addEventListener('contextmenu', async (e) => {
+  e.preventDefault();
+  try {
+    const scope = await waitForScope();
+    if (scope?.showContextMenu) {
+      scope.showContextMenu();
+    }
+  } catch (err) {
+    console.error('Error showing context menu:', err);
+  }
+});
 
 const App = () => {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
