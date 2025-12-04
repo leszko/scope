@@ -29,6 +29,11 @@
     "email": "info@daydream.live"
   },
   "license": "MIT",
+  "homepage": "https://github.com/leszko/scope",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leszko/scope.git"
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^19.1.10",
