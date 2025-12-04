@@ -17,6 +17,7 @@ export class ScopeElectronAppService {
 
   /**
    * Set up Windows Jump List (right-click menu on taskbar icon)
+   * Note: Linux uses desktop actions in the .desktop file instead
    */
   private setupWindowsJumpList(): void {
     if (process.platform !== 'win32') return;

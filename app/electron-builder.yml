@@ -103,6 +103,7 @@ linux:
       arch:
         - x64
   executableName: daydream-scope
+  desktop: build/linux/daydream-scope.desktop
   synopsis: Real-time AI video generation and streaming
   description: >
     Daydream Scope enables real-time AI-powered video generation and streaming
