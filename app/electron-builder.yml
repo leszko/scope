@@ -115,8 +115,8 @@ linux:
 # Debian package configuration
 deb:
   depends:
-    - libnotify4
-    - libappindicator3-1
+    - libnotify4 | libnotify-bin
+    - libayatana-appindicator3-1 | libappindicator3-1
     - libxtst6
     - libnss3
   afterInstall: build/linux/after-install.sh

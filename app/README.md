@@ -85,9 +85,10 @@ npm run publish:github
 - Universal binary for Intel and Apple Silicon
 
 ### Linux
-- **AppImage**: Universal, no installation required
 - **DEB**: For Debian/Ubuntu
-- **RPM**: For Fedora/RHEL
+- **tar.gz**: Portable archive
+
+**Installation**: Use `sudo apt install ./Daydream-Scope-*.deb` to automatically handle dependencies.
 
 ## Documentation
 
