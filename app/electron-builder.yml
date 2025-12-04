@@ -99,15 +99,11 @@ linux:
   icon: assets/icon.png
   category: Utility
   target:
-    - target: AppImage
-      arch:
-        - x64
-        - arm64
     - target: deb
       arch:
         - x64
         - arm64
-    - target: rpm
+    - target: tar.gz
       arch:
         - x64
         - arm64
@@ -117,10 +113,6 @@ linux:
     Daydream Scope enables real-time AI-powered video generation and streaming
     using state-of-the-art diffusion models.
   maintainer: Daydream <info@daydream.live>
-
-# AppImage configuration
-appImage:
-  license: LICENSE.md
 
 # Debian package configuration
 deb:
@@ -134,20 +126,27 @@ deb:
   afterInstall: build/linux/after-install.sh
   afterRemove: build/linux/after-remove.sh
 
-# RPM package configuration
-rpm:
-  depends:
-    - libXScrnSaver
-    - libappindicator
-  afterInstall: build/linux/after-install.sh
-  afterRemove: build/linux/after-remove.sh
+# tar.gz configuration
+# Note: tar.gz format uses default settings from linux configuration above
 
-# Snap configuration (optional)
-snap:
-  grade: stable
-  confinement: classic
-  environment:
-    DISABLE_WAYLAND: "1"
+# AppImage configuration (disabled - not building AppImage)
+# appImage:
+#   license: LICENSE.md
+
+# RPM package configuration (disabled - not building RPM)
+# rpm:
+#   depends:
+#     - libXScrnSaver
+#     - libappindicator
+#   afterInstall: build/linux/after-install.sh
+#   afterRemove: build/linux/after-remove.sh
+
+# Snap configuration (disabled - not building Snap)
+# snap:
+#   grade: stable
+#   confinement: classic
+#   environment:
+#     DISABLE_WAYLAND: "1"
 
 # Compression
 compression: normal
