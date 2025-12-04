@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, nativeImage, nativeTheme, globalShortcut } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, globalShortcut } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { AppState } from '../types/services';
@@ -8,6 +8,7 @@ import { logger, getLogPath } from '../utils/logger';
 
 export class ScopeElectronAppService {
   private appState: AppState;
+  private tray: Tray | null = null;
   private logsWindow: BrowserWindow | null = null;
 
   constructor(appState: AppState) {
@@ -219,6 +220,58 @@ export class ScopeElectronAppService {
     }
   }
 
+  createTray(): void {
+    // Create a simple tray icon
+    let iconPath: string;
+    if (app.isPackaged) {
+      // Try tray-icon.png first, fall back to icon.png
+      const trayIconPath = path.join(process.resourcesPath, 'app', 'assets', 'tray-icon.png');
+      const fallbackIconPath = path.join(process.resourcesPath, 'app', 'assets', 'icon.png');
+      iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+    } else {
+      // Try tray-icon.png first, fall back to icon.png
+      const trayIconPath = path.join(__dirname, '../../assets/tray-icon.png');
+      const fallbackIconPath = path.join(__dirname, '../../assets/icon.png');
+      iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+    }
+
+    const icon = nativeImage.createFromPath(iconPath);
+    this.tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show Window',
+        click: () => {
+          if (this.appState.mainWindow) {
+            this.appState.mainWindow.show();
+          }
+        },
+      },
+      {
+        label: 'Logs',
+        click: () => {
+          this.showLogsWindow();
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit',
+        click: () => {
+          app.quit();
+        },
+      },
+    ]);
+
+    this.tray.setToolTip('Daydream Scope');
+    this.tray.setContextMenu(contextMenu);
+
+    this.tray.on('click', () => {
+      if (this.appState.mainWindow) {
+        this.appState.mainWindow.show();
+      }
+    });
+  }
+
   sendSetupStatus(status: string): void {
     if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
       try {
@@ -287,6 +340,10 @@ export class ScopeElectronAppService {
     // Unregister global shortcuts
     globalShortcut.unregisterAll();
 
+    if (this.tray) {
+      this.tray.destroy();
+      this.tray = null;
+    }
     if (this.logsWindow) {
       this.logsWindow.close();
       this.logsWindow = null;

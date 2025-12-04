@@ -381,6 +381,9 @@ app.on('ready', async () => {
   // Create main window
   electronAppService.createMainWindow();
 
+  // Create system tray
+  electronAppService.createTray();
+
   // Check if launched with special arguments (e.g., --show-logs from Jump List)
   electronAppService.checkLaunchArgs();
 
