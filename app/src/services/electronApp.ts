@@ -223,19 +223,35 @@ export class ScopeElectronAppService {
   createTray(): void {
     // Create a simple tray icon
     let iconPath: string;
+    const isWindows = process.platform === 'win32';
+
     if (app.isPackaged) {
-      // Try tray-icon.png first, fall back to icon.png
-      const trayIconPath = path.join(process.resourcesPath, 'app', 'assets', 'tray-icon.png');
-      const fallbackIconPath = path.join(process.resourcesPath, 'app', 'assets', 'icon.png');
-      iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+      const assetsPath = path.join(process.resourcesPath, 'app', 'assets');
+      if (isWindows) {
+        // Windows: prefer .ico for tray icons
+        iconPath = path.join(assetsPath, 'icon.ico');
+      } else {
+        // macOS/Linux: use PNG
+        const trayIconPath = path.join(assetsPath, 'tray-icon.png');
+        const fallbackIconPath = path.join(assetsPath, 'icon.png');
+        iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+      }
     } else {
-      // Try tray-icon.png first, fall back to icon.png
-      const trayIconPath = path.join(__dirname, '../../assets/tray-icon.png');
-      const fallbackIconPath = path.join(__dirname, '../../assets/icon.png');
-      iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+      const assetsPath = path.join(__dirname, '../../assets');
+      if (isWindows) {
+        // Windows: prefer .ico for tray icons
+        iconPath = path.join(assetsPath, 'icon.ico');
+      } else {
+        // macOS/Linux: use PNG
+        const trayIconPath = path.join(assetsPath, 'tray-icon.png');
+        const fallbackIconPath = path.join(assetsPath, 'icon.png');
+        iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+      }
     }
 
+    logger.info(`Creating tray with icon: ${iconPath}, exists: ${fs.existsSync(iconPath)}`);
     const icon = nativeImage.createFromPath(iconPath);
+    logger.info(`Tray icon isEmpty: ${icon.isEmpty()}, size: ${icon.getSize().width}x${icon.getSize().height}`);
     this.tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
 
     const contextMenu = Menu.buildFromTemplate([
