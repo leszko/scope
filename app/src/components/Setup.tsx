@@ -92,7 +92,7 @@ const Setup: React.FC<SetupProps> = ({ onComplete }) => {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -100,6 +100,7 @@ const Setup: React.FC<SetupProps> = ({ onComplete }) => {
       background: 'hsl(0, 0%, 6%)',
       color: 'hsl(0, 0%, 90%)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      overflow: 'hidden',
     }}>
       <div style={{
         textAlign: 'center',

@@ -52,7 +52,7 @@ const ServerLoading: React.FC<ServerLoadingProps> = ({ onComplete, onError }) =>
   if (error) {
     return (
       <div style={{
-        minHeight: '100vh',
+        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -60,6 +60,7 @@ const ServerLoading: React.FC<ServerLoadingProps> = ({ onComplete, onError }) =>
         background: 'hsl(0, 0%, 6%)',
         color: 'hsl(0, 0%, 90%)',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        overflow: 'hidden',
       }}>
         <div style={{
           textAlign: 'center',
@@ -104,7 +105,7 @@ const ServerLoading: React.FC<ServerLoadingProps> = ({ onComplete, onError }) =>
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -112,6 +113,7 @@ const ServerLoading: React.FC<ServerLoadingProps> = ({ onComplete, onError }) =>
       background: 'hsl(0, 0%, 6%)',
       color: 'hsl(0, 0%, 90%)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      overflow: 'hidden',
     }}>
       <div style={{
         textAlign: 'center',

@@ -155,6 +155,26 @@ export class ScopeElectronAppService {
       logger.info('Window started loading');
     });
 
+    // Inject CSS to hide scrollbar as early as possible (before page renders)
+    mainWindow.webContents.on('dom-ready', () => {
+      const currentUrl = mainWindow.webContents.getURL();
+      // Only hide scrollbar on loading/setup screens (not on the Python server frontend)
+      if (!currentUrl.includes(SERVER_CONFIG.host) && !currentUrl.includes('127.0.0.1:') && !currentUrl.includes('localhost:')) {
+        mainWindow.webContents.insertCSS(`
+          ::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+          }
+          html, body, #root {
+            overflow: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+          }
+        `);
+      }
+    });
+
     mainWindow.webContents.on('did-finish-load', () => {
       logger.info('Window finished loading');
     });
@@ -214,6 +234,31 @@ export class ScopeElectronAppService {
       try {
         // Once server is running, load the actual frontend from Python server
         this.appState.mainWindow.loadURL(SERVER_CONFIG.url);
+
+        // Inject dark scrollbar styling once the page loads
+        this.appState.mainWindow.webContents.once('did-finish-load', () => {
+          if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
+            this.appState.mainWindow.webContents.insertCSS(`
+              ::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+              }
+              ::-webkit-scrollbar-track {
+                background: hsl(0, 0%, 10%);
+              }
+              ::-webkit-scrollbar-thumb {
+                background: hsl(0, 0%, 25%);
+                border-radius: 5px;
+              }
+              ::-webkit-scrollbar-thumb:hover {
+                background: hsl(0, 0%, 35%);
+              }
+              ::-webkit-scrollbar-corner {
+                background: hsl(0, 0%, 10%);
+              }
+            `);
+          }
+        });
       } catch (err) {
         logger.error('Failed to load frontend:', err);
       }
