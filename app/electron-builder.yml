@@ -92,6 +92,7 @@ nsis:
   menuCategory: false
   runAfterFinish: true
   artifactName: ${productName}-Setup-${version}-${arch}.${ext}
+  include: build/installer.nsh # Custom script for UV installation during setup
 
 # Linux configuration
 linux:
