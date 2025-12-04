@@ -102,11 +102,9 @@ linux:
     - target: deb
       arch:
         - x64
-        - arm64
     - target: tar.gz
       arch:
         - x64
-        - arm64
   executableName: daydream-scope
   synopsis: Real-time AI video generation and streaming
   description: >
