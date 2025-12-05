@@ -46,11 +46,24 @@ export const UV_DOWNLOAD_URLS = {
   },
 } as const;
 
+// Default port - using 52178 as it's less commonly used than 8000
+const DEFAULT_PORT = 52178;
+
+// Mutable server config - port may change if default is busy
 export const SERVER_CONFIG = {
   host: process.env.SCOPE_SERVER_HOST || '127.0.0.1',
-  port: parseInt(process.env.SCOPE_SERVER_PORT || '8000', 10),
-  url: process.env.SCOPE_SERVER_URL || 'http://127.0.0.1:8000',
-} as const;
+  port: parseInt(process.env.SCOPE_SERVER_PORT || String(DEFAULT_PORT), 10),
+  get url() {
+    return process.env.SCOPE_SERVER_URL || `http://${this.host}:${this.port}`;
+  },
+};
+
+/**
+ * Update the server port (called when finding an available port)
+ */
+export const setServerPort = (port: number): void => {
+  SERVER_CONFIG.port = port;
+};
 
 /**
  * Validate critical configuration at startup

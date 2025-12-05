@@ -1,10 +1,9 @@
 import { spawn, ChildProcessWithoutNullStreams, execSync } from 'child_process';
-import { app } from 'electron';
-import path from 'path';
 import fs from 'fs';
 import { PythonProcessService } from '../types/services';
-import { getPaths, SERVER_CONFIG, getEnhancedPath } from '../utils/config';
+import { getPaths, SERVER_CONFIG, getEnhancedPath, setServerPort } from '../utils/config';
 import { logger } from '../utils/logger';
+import { findAvailablePort } from '../utils/port';
 
 export class ScopePythonProcessService implements PythonProcessService {
   private serverProcess: ChildProcessWithoutNullStreams | null = null;
@@ -43,6 +42,19 @@ export class ScopePythonProcessService implements PythonProcessService {
         throw new Error('uv not found');
       }
     }
+
+    // Find an available port (use configured port as starting point)
+    const desiredPort = SERVER_CONFIG.port;
+    logger.info(`Finding available port starting from ${desiredPort}...`);
+
+    // Find an available port
+    const availablePort = await findAvailablePort(desiredPort, SERVER_CONFIG.host);
+
+    // Update the server config with the actual port we're using
+    if (availablePort !== desiredPort) {
+      logger.info(`Port ${desiredPort} was busy, using port ${availablePort} instead`);
+    }
+    setServerPort(availablePort);
 
     logger.info(`Starting server with: ${uvCommand} run daydream-scope --host ${SERVER_CONFIG.host} --port ${SERVER_CONFIG.port} --no-browser`);
     logger.info(`Working directory: ${projectRoot}`);
