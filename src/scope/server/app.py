@@ -533,7 +533,7 @@ def main():
         help="Enable auto-reload for development (default: False)",
     )
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)"
+        "--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)"
     )
     parser.add_argument(
         "--port", type=int, default=8000, help="Port to bind to (default: 8000)"
