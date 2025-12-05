@@ -245,7 +245,7 @@ export class ScopeElectronAppService {
         // Once server is running, load the actual frontend from Python server
         this.appState.mainWindow.loadURL(SERVER_CONFIG.url);
 
-        // Inject dark scrollbar styling once the page loads
+        // Inject dark scrollbar styling and draggable title bar once the page loads
         this.appState.mainWindow.webContents.once('did-finish-load', () => {
           if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
             this.appState.mainWindow.webContents.insertCSS(`
@@ -265,6 +265,24 @@ export class ScopeElectronAppService {
               }
               ::-webkit-scrollbar-corner {
                 background: hsl(0, 0%, 10%);
+              }
+              /* Draggable title bar region for Windows/macOS with hidden title bar */
+              body::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 32px;
+                -webkit-app-region: drag;
+                z-index: 10000;
+                pointer-events: auto;
+              }
+              /* Make interactive elements non-draggable */
+              button, input, textarea, select, a,
+              [role="button"], [role="textbox"], [role="combobox"],
+              [contenteditable="true"] {
+                -webkit-app-region: no-drag;
               }
             `);
           }
@@ -503,14 +521,12 @@ export class ScopeElectronAppService {
       logViewerPath = path.join(__dirname, '../../src/components/LogViewer.html');
     }
 
-    // Encode the log content and path as URL parameters
-    const encodedContent = encodeURIComponent(logContent);
-    const encodedPath = encodeURIComponent(logPath);
-
+    // Pass log content and path as URL parameters
+    // Note: loadFile's query option handles URL encoding automatically
     this.logsWindow.loadFile(logViewerPath, {
       query: {
-        content: encodedContent,
-        path: encodedPath,
+        content: logContent,
+        path: logPath,
       },
     }).catch((err) => {
       logger.error('Failed to load log viewer:', err);
