@@ -72,7 +72,7 @@ export class ScopePythonProcessService implements PythonProcessService {
       '--no-browser',
     ], {
       cwd: projectRoot,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
       env: {
         ...process.env,
