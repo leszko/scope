@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self';">
     <title>Server Logs</title>
     <style>
       * {
@@ -65,37 +65,10 @@
   <body>
     <div class="header">
       <h1>Server Logs</h1>
-      <button onclick="location.reload()">Refresh</button>
+      <button id="refreshButton">Refresh</button>
     </div>
     <div class="log-path" id="logPath"></div>
     <pre id="logs"></pre>
-    <script>
-      // Get log data from query params
-      const params = new URLSearchParams(window.location.search);
-      const logPath = params.get('path') || 'Unknown';
-      const logContent = params.get('content') || '';
-
-      // Display log path
-      document.getElementById('logPath').textContent = 'Log file: ' + logPath;
-
-      // Display logs with syntax highlighting
-      const pre = document.getElementById('logs');
-      let html = logContent
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
-      html = html.replace(/\[INFO\]/g, '<span class="info">[INFO]</span>');
-      html = html.replace(/\[ERROR\]/g, '<span class="error">[ERROR]</span>');
-      html = html.replace(/\[WARN\]/g, '<span class="warn">[WARN]</span>');
-      html = html.replace(/\[SERVER\]/g, '<span class="server">[SERVER]</span>');
-
-      pre.innerHTML = html;
-
-      // Scroll to bottom
-      window.scrollTo(0, document.body.scrollHeight);
-    </script>
+    <script src="./LogViewer.js"></script>
   </body>
 </html>

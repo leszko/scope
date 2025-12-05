@@ -10,16 +10,23 @@ export default defineConfig({
     {
       name: 'copy-log-viewer',
       closeBundle() {
-        // Copy LogViewer.html to build directory after build
-        const src = path.resolve(__dirname, 'src/components/LogViewer.html');
-        const dest = path.resolve(__dirname, '.vite/build/renderer/LogViewer.html');
-        try {
-          mkdirSync(path.dirname(dest), { recursive: true });
-          copyFileSync(src, dest);
-          console.log('✓ Copied LogViewer.html to build directory');
-        } catch (err) {
-          console.warn('Failed to copy LogViewer.html:', err);
-        }
+        // Copy LogViewer.html and LogViewer.js to build directory after build
+        const files = [
+          { src: 'src/components/LogViewer.html', dest: '.vite/build/renderer/LogViewer.html' },
+          { src: 'src/components/LogViewer.js', dest: '.vite/build/renderer/LogViewer.js' },
+        ];
+
+        files.forEach(({ src, dest }) => {
+          const srcPath = path.resolve(__dirname, src);
+          const destPath = path.resolve(__dirname, dest);
+          try {
+            mkdirSync(path.dirname(destPath), { recursive: true });
+            copyFileSync(srcPath, destPath);
+            console.log(`✓ Copied ${src} to build directory`);
+          } catch (err) {
+            console.warn(`Failed to copy ${src}:`, err);
+          }
+        });
       },
     },
   ],

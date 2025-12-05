@@ -1,4 +1,4 @@
-import { app, ipcMain, nativeImage, dialog } from 'electron';
+import { app, ipcMain, nativeImage, dialog, session } from 'electron';
 import path from 'path';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -138,32 +138,76 @@ if (!gotTheLock) {
 }
 
 /**
+ * IPC Validation Wrapper
+ * Wraps IPC handlers with error handling and validation
+ */
+function validateIPC<T extends (...args: any[]) => Promise<any>>(
+  handler: T,
+  handlerName: string
+): T {
+  return (async (...args: any[]) => {
+    try {
+      // Log IPC call for debugging (only in development)
+      if (!app.isPackaged) {
+        logger.debug(`IPC call: ${handlerName}`, args);
+      }
+
+      // Validate that handler exists
+      if (typeof handler !== 'function') {
+        throw new Error(`IPC handler ${handlerName} is not a function`);
+      }
+
+      // Execute handler
+      const result = await handler(...args);
+
+      // Validate result is serializable (basic check)
+      if (result !== undefined && typeof result === 'object') {
+        try {
+          JSON.stringify(result);
+        } catch (err) {
+          logger.warn(`IPC handler ${handlerName} returned non-serializable result`);
+        }
+      }
+
+      return result;
+    } catch (error) {
+      logger.error(`IPC handler ${handlerName} error:`, error);
+      // Re-throw to let renderer handle it
+      throw error;
+    }
+  }) as T;
+}
+
+/**
  * IPC Handlers with validation - register early so they're available when renderer loads
  */
-ipcMain.handle(IPC_CHANNELS.GET_SETUP_STATE, async () => {
+ipcMain.handle(IPC_CHANNELS.GET_SETUP_STATE, validateIPC(async () => {
   return { needsSetup: appState.needsSetup };
-});
+}, IPC_CHANNELS.GET_SETUP_STATE));
 
-ipcMain.handle(IPC_CHANNELS.GET_SETUP_STATUS, async () => {
+ipcMain.handle(IPC_CHANNELS.GET_SETUP_STATUS, validateIPC(async () => {
   return { status: appState.currentSetupStatus };
-});
+}, IPC_CHANNELS.GET_SETUP_STATUS));
 
-ipcMain.handle(IPC_CHANNELS.GET_SERVER_STATUS, async () => {
+ipcMain.handle(IPC_CHANNELS.GET_SERVER_STATUS, validateIPC(async () => {
   return { isRunning: appState.isServerRunning };
-});
+}, IPC_CHANNELS.GET_SERVER_STATUS));
 
-ipcMain.handle(IPC_CHANNELS.SHOW_CONTEXT_MENU, async () => {
+ipcMain.handle(IPC_CHANNELS.SHOW_CONTEXT_MENU, validateIPC(async () => {
   if (electronAppService) {
     electronAppService.showContextMenu();
+  } else {
+    logger.warn('showContextMenu called but electronAppService not initialized');
   }
-});
+}, IPC_CHANNELS.SHOW_CONTEXT_MENU));
 
-ipcMain.handle(IPC_CHANNELS.GET_LOGS, async () => {
+ipcMain.handle(IPC_CHANNELS.GET_LOGS, validateIPC(async () => {
   if (electronAppService) {
     return electronAppService.getLogs();
   }
+  logger.warn('getLogs called but electronAppService not initialized');
   return 'Service not initialized';
-});
+}, IPC_CHANNELS.GET_LOGS));
 
 // Setup error callback for Python process
 function setupPythonProcessErrorHandler(): void {
@@ -345,9 +389,40 @@ async function startServer(): Promise<void> {
 }
 
 /**
+ * Configure session permissions
+ * Restricts what permissions the app can request
+ */
+function configureSessionPermissions(): void {
+  // Set permission request handler - deny all by default
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    // List of allowed permissions (empty by default - deny all)
+    const allowedPermissions: string[] = [];
+
+    if (allowedPermissions.includes(permission)) {
+      logger.info(`Permission granted: ${permission}`);
+      callback(true);
+    } else {
+      logger.warn(`Permission denied: ${permission}`);
+      callback(false);
+    }
+  });
+
+  // Set permission check handler - deny all by default
+  session.defaultSession.setPermissionCheckHandler(() => {
+    // Deny all permission checks by default
+    return false;
+  });
+
+  logger.info('Session permissions configured');
+}
+
+/**
  * Application ready handler
  */
 app.on('ready', async () => {
+  // Configure session permissions early
+  configureSessionPermissions();
+
   // Check for updates (only in production)
   if (app.isPackaged) {
     // Check for updates after 3 seconds to let app initialize first

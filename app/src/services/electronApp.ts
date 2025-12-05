@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, globalShortcut } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { AppState } from '../types/services';
@@ -147,6 +147,17 @@ export class ScopeElectronAppService {
     mainWindow.once('ready-to-show', () => {
       logger.info('Window ready to show');
       mainWindow.show();
+
+      // Security: Disable DevTools in production
+      if (app.isPackaged) {
+        mainWindow.webContents.closeDevTools();
+
+        // Prevent DevTools from being opened in production
+        mainWindow.webContents.on('devtools-opened', () => {
+          logger.warn('DevTools attempted to open in production - closing');
+          mainWindow.webContents.closeDevTools();
+        });
+      }
     });
 
     // Add event listeners for debugging
@@ -439,7 +450,10 @@ export class ScopeElectronAppService {
 
     const logPath = getLogPath();
 
-    // Create logs viewer window
+    // Create isolated session for logs window (session partitioning)
+    const logsSession = session.fromPartition('persist:logs-viewer');
+
+    // Create logs viewer window with isolated session
     this.logsWindow = new BrowserWindow({
       width: 900,
       height: 600,
@@ -447,11 +461,21 @@ export class ScopeElectronAppService {
       backgroundColor: '#1a1a1a',
       autoHideMenuBar: true,
       webPreferences: {
+        session: logsSession, // Use isolated session
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
       },
     });
+
+    // Security: Disable DevTools in production for logs window
+    if (app.isPackaged) {
+      this.logsWindow.webContents.closeDevTools();
+      this.logsWindow.webContents.on('devtools-opened', () => {
+        logger.warn('DevTools attempted to open in logs window (production) - closing');
+        this.logsWindow?.webContents.closeDevTools();
+      });
+    }
 
     // Read log file and display it
     let logContent = '';

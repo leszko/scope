@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Setup from './components/Setup';
 import ServerLoading from './components/ServerLoading';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 declare global {
   interface Window {
@@ -234,4 +235,8 @@ const App = () => {
   );
 };
 
-createRoot(rootEl).render(<App />);
+createRoot(rootEl).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
