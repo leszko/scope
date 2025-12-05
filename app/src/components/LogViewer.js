@@ -4,8 +4,8 @@
 
   // Get log data from query params
   const params = new URLSearchParams(window.location.search);
-  const logPath = params.get('path') || 'Unknown';
-  const logContent = params.get('content') || '';
+  const logPath = decodeURIComponent(params.get('path') || 'Unknown');
+  const logContent = decodeURIComponent(params.get('content') || '');
 
   // Display log path safely using textContent
   const logPathElement = document.getElementById('logPath');
