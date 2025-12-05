@@ -1,6 +1,6 @@
 appId: live.daydream.scope
-productName: DaydreamScope
-copyright: Copyright © 2024 Daydream
+productName: Daydream Scope
+copyright: Copyright © 2025 Daydream
 
 # Directories
 directories:
@@ -14,9 +14,9 @@ files:
   - node_modules/**/*
   - assets/**/*
   - src/components/LogViewer.html
-  - "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
-  - "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
-  - "!node_modules/*.d.ts"
+  - "!node_modules/**/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!node_modules/**/{test,__tests__,tests,powered-test,example,examples}"
+  - "!node_modules/**/*.d.ts"
   - "!node_modules/.bin"
   - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
   - "!.editorconfig"
@@ -91,7 +91,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: DaydreamScope
+  shortcutName: Daydream Scope
   installerIcon: assets/icon.ico
   uninstallerIcon: assets/icon.ico
   deleteAppDataOnUninstall: false # Ask user about data deletion
