@@ -51,8 +51,8 @@ mac:
   icon: assets/icon.png
   hardenedRuntime: true
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
+  entitlements: build/mac/entitlements.mac.plist
+  entitlementsInherit: build/mac/entitlements.mac.plist
   target:
     - target: dmg
       arch:
@@ -100,7 +100,7 @@ nsis:
   menuCategory: false
   runAfterFinish: true
   artifactName: ${productName}-Setup-${version}-${arch}.${ext}
-  include: build/installer.nsh # Custom script for UV installation during setup
+  include: build/win/installer.nsh # Custom script for UV installation during setup
 
 # Linux configuration
 linux:
