@@ -34,7 +34,7 @@ export async function isPortAvailable(port: number, host: string = '127.0.0.1'):
 export async function findAvailablePort(
   startPort: number,
   host: string = '127.0.0.1',
-  maxAttempts: number = 100
+  maxAttempts: number = 5
 ): Promise<number> {
   for (let i = 0; i < maxAttempts; i++) {
     const port = startPort + i;
