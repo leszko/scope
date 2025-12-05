@@ -14,7 +14,7 @@ const WINDOW_CONFIG = {
 
 const TIMEOUTS = {
   LAUNCH_ARGS_DELAY: 1000,
-  WINDOW_LOAD: 10000,
+  WINDOW_LOAD: 30000,
 } as const;
 
 const COLORS = {
@@ -91,32 +91,14 @@ export class ScopeElectronAppService {
   }
 
   /**
-   * Injects CSS for the Python server frontend:
-   * - Styled dark scrollbars
-   * - Draggable title bar (needed for hidden title bar on Windows/macOS)
+   * Injects draggable title bar CSS for the Python server frontend.
+   * Required because the window has a hidden title bar on Windows/macOS,
+   * so users need a draggable region to move the window.
    *
-   * Note: This is only needed for the Python frontend, not the Electron renderer
-   * which already has these styles in index.css
+   * Note: Scrollbar styling is handled by the frontend itself.
    */
-  private injectFrontendCSS(window: BrowserWindow): void {
+  private injectDraggableTitleBarCSS(window: BrowserWindow): void {
     const css = `
-      ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-      }
-      ::-webkit-scrollbar-track {
-        background: hsl(0, 0%, 10%);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: hsl(0, 0%, 25%);
-        border-radius: 5px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: hsl(0, 0%, 35%);
-      }
-      ::-webkit-scrollbar-corner {
-        background: hsl(0, 0%, 10%);
-      }
       /* Draggable title bar region for Windows/macOS with hidden title bar */
       body::before {
         content: '';
@@ -306,9 +288,8 @@ export class ScopeElectronAppService {
         this.appState.mainWindow.loadURL(SERVER_CONFIG.url);
         this.appState.mainWindow.webContents.once('did-finish-load', () => {
           if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
-            // Inject CSS for styled scrollbars and draggable title bar
-            // (needed because Python frontend doesn't have these styles)
-            this.injectFrontendCSS(this.appState.mainWindow);
+            // Inject draggable title bar CSS (required for hidden title bar)
+            this.injectDraggableTitleBarCSS(this.appState.mainWindow);
           }
         });
       } catch (err) {
