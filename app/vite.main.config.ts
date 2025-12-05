@@ -42,7 +42,6 @@ export default defineConfig({
         entryFileNames: '[name].js',
       },
     },
-    emptyOutDir: true,
     minify: false,
     sourcemap: true,
   },
