@@ -6,6 +6,26 @@ import { IPC_CHANNELS } from '../types/ipc';
 import { SERVER_CONFIG } from '../utils/config';
 import { logger, getLogPath } from '../utils/logger';
 
+// Constants
+const WINDOW_CONFIG = {
+  MAIN: { width: 1400, height: 900 },
+  LOGS: { width: 900, height: 600 },
+} as const;
+
+const TIMEOUTS = {
+  LAUNCH_ARGS_DELAY: 1000,
+  WINDOW_LOAD: 10000,
+} as const;
+
+const COLORS = {
+  BACKGROUND: '#0f0f0f',
+  LOGS_BACKGROUND: '#1a1a1a',
+} as const;
+
+const LOG_LINE_LIMIT = 500;
+
+const ALLOWED_HOSTS = ['127.0.0.1', 'localhost', SERVER_CONFIG.host];
+
 export class ScopeElectronAppService {
   private appState: AppState;
   private tray: Tray | null = null;
@@ -14,6 +34,124 @@ export class ScopeElectronAppService {
   constructor(appState: AppState) {
     this.appState = appState;
     this.setupWindowsJumpList();
+  }
+
+  // Helper methods
+  private isAllowedUrl(url: string): boolean {
+    try {
+      const parsedUrl = new URL(url);
+      return ALLOWED_HOSTS.includes(parsedUrl.hostname);
+    } catch {
+      return false;
+    }
+  }
+
+  private getIconPath(iconName: string = 'icon.png'): string {
+    if (app.isPackaged) {
+      return path.join(process.resourcesPath, 'app', 'assets', iconName);
+    }
+    return path.join(__dirname, '../../assets', iconName);
+  }
+
+  private getTrayIconPath(): string {
+    const isWindows = process.platform === 'win32';
+    if (isWindows) {
+      return this.getIconPath('icon.ico');
+    }
+    const trayIconPath = this.getIconPath('tray-icon.png');
+    const fallbackIconPath = this.getIconPath('icon.png');
+    return fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
+  }
+
+  private readLogFile(maxLines: number = LOG_LINE_LIMIT): string {
+    const logPath = getLogPath();
+    try {
+      if (fs.existsSync(logPath)) {
+        const content = fs.readFileSync(logPath, 'utf-8');
+        const lines = content.split('\n');
+        if (lines.length > maxLines) {
+          return lines.slice(-maxLines).join('\n');
+        }
+        return content;
+      }
+      return 'No logs found.';
+    } catch (err) {
+      return `Error reading logs: ${err}`;
+    }
+  }
+
+  private setupDevToolsSecurity(window: BrowserWindow): void {
+    if (!app.isPackaged) return;
+
+    window.webContents.closeDevTools();
+    window.webContents.on('devtools-opened', () => {
+      logger.warn('DevTools attempted to open in production - closing');
+      window.webContents.closeDevTools();
+    });
+  }
+
+  private injectScrollbarCSS(window: BrowserWindow, hideScrollbar: boolean = false): void {
+    const css = hideScrollbar
+      ? `
+        ::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
+        html, body, #root {
+          overflow: hidden !important;
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+      `
+      : `
+        ::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+          background: hsl(0, 0%, 10%);
+        }
+        ::-webkit-scrollbar-thumb {
+          background: hsl(0, 0%, 25%);
+          border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: hsl(0, 0%, 35%);
+        }
+        ::-webkit-scrollbar-corner {
+          background: hsl(0, 0%, 10%);
+        }
+        /* Draggable title bar region for Windows/macOS with hidden title bar */
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 32px;
+          -webkit-app-region: drag;
+          z-index: 10000;
+          pointer-events: auto;
+        }
+        /* Make interactive elements non-draggable */
+        button, input, textarea, select, a,
+        [role="button"], [role="textbox"], [role="combobox"],
+        [contenteditable="true"] {
+          -webkit-app-region: no-drag;
+        }
+      `;
+    window.webContents.insertCSS(css);
+  }
+
+  private sendIPC(channel: string, data: unknown): void {
+    if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
+      try {
+        this.appState.mainWindow.webContents.send(channel, data);
+      } catch (err) {
+        logger.error(`Failed to send ${channel}:`, err);
+      }
+    }
   }
 
   /**
@@ -35,15 +173,11 @@ export class ScopeElectronAppService {
     ]);
   }
 
-  /**
-   * Check if app was launched with --show-logs argument
-   */
   checkLaunchArgs(): void {
     if (process.argv.includes('--show-logs')) {
-      // Delay to ensure window is ready
       setTimeout(() => {
         this.showLogsWindow();
-      }, 1000);
+      }, TIMEOUTS.LAUNCH_ARGS_DELAY);
     }
   }
 
@@ -51,92 +185,58 @@ export class ScopeElectronAppService {
     // Force dark mode for native UI elements (title bar, scrollbars, etc.)
     nativeTheme.themeSource = 'dark';
 
-    // Determine preload path
-    // With Electron Forge + Vite, preload.js is built to the same directory as main.js
-    // In both dev and production, __dirname points to .vite/build/
     const preloadPath = path.join(__dirname, 'preload.js');
-
-    // Determine icon path
-    let iconPath: string;
-    if (app.isPackaged) {
-      iconPath = path.join(process.resourcesPath, 'app', 'assets', 'icon.png');
-    } else {
-      iconPath = path.join(__dirname, '../../assets/icon.png');
-    }
-
-    const icon = nativeImage.createFromPath(iconPath);
+    const icon = nativeImage.createFromPath(this.getIconPath());
     const windowIcon = icon.isEmpty() ? undefined : icon;
 
     const mainWindow = new BrowserWindow({
-      width: 1400,
-      height: 900,
+      width: WINDOW_CONFIG.MAIN.width,
+      height: WINDOW_CONFIG.MAIN.height,
       title: 'Daydream Scope',
       icon: windowIcon,
-      backgroundColor: '#0f0f0f', // Dark background to match theme
-      darkTheme: true, // Force dark theme for window frame (Linux/Windows)
+      backgroundColor: COLORS.BACKGROUND,
+      darkTheme: true,
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : (process.platform === 'win32' ? 'hidden' : 'default'),
       titleBarOverlay: process.platform === 'win32' ? {
-        color: '#0f0f0f',
+        color: COLORS.BACKGROUND,
         symbolColor: '#ffffff',
         height: 32,
       } : undefined,
-      autoHideMenuBar: true, // Hide menu bar (can still access with Alt key)
+      autoHideMenuBar: true,
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: true, // Enable sandboxing for security
+        sandbox: true,
         webSecurity: true,
         experimentalFeatures: false,
       },
-      show: false, // Don't show until ready
+      show: false,
     });
 
     // Security: Prevent navigation to external URLs
     mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-      try {
-        const parsedUrl = new URL(navigationUrl);
-        const allowedHosts = ['127.0.0.1', 'localhost', SERVER_CONFIG.host];
-
-        if (!allowedHosts.includes(parsedUrl.hostname)) {
-          event.preventDefault();
-          logger.warn(`Blocked navigation to external URL: ${navigationUrl}`);
-        }
-      } catch (err) {
-        // Invalid URL, prevent navigation
+      if (!this.isAllowedUrl(navigationUrl)) {
         event.preventDefault();
-        logger.warn(`Blocked navigation to invalid URL: ${navigationUrl}`);
+        logger.warn(`Blocked navigation to external URL: ${navigationUrl}`);
       }
     });
 
     // Security: Prevent new window creation (open external links)
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-      try {
-        const parsedUrl = new URL(url);
-        const allowedHosts = ['127.0.0.1', 'localhost', SERVER_CONFIG.host];
-
-        if (!allowedHosts.includes(parsedUrl.hostname)) {
-          logger.warn(`Blocked new window to external URL: ${url}`);
-          return { action: 'deny' };
-        }
-
-        return { action: 'allow' };
-      } catch (err) {
-        // Invalid URL, deny
-        logger.warn(`Blocked new window to invalid URL: ${url}`);
+      if (!this.isAllowedUrl(url)) {
+        logger.warn(`Blocked new window to external URL: ${url}`);
         return { action: 'deny' };
       }
+      return { action: 'allow' };
     });
 
     // Load the Electron renderer (setup screen) initially
-    // The main process will check server status and load frontend if needed
     if (app.isPackaged) {
-      // In production, load from the built renderer
       const indexPath = path.join(process.resourcesPath, 'app', '.vite', 'build', 'renderer', 'index.html');
       logger.info(`Loading from file: ${indexPath}`);
       mainWindow.loadFile(indexPath);
     } else {
-      // In development, load from Vite dev server for renderer
       const devUrl = 'http://localhost:5173';
       logger.info(`Loading from dev server: ${devUrl}`);
       mainWindow.loadURL(devUrl).catch((err) => {
@@ -147,42 +247,20 @@ export class ScopeElectronAppService {
     mainWindow.once('ready-to-show', () => {
       logger.info('Window ready to show');
       mainWindow.show();
-
-      // Security: Disable DevTools in production
-      if (app.isPackaged) {
-        mainWindow.webContents.closeDevTools();
-
-        // Prevent DevTools from being opened in production
-        mainWindow.webContents.on('devtools-opened', () => {
-          logger.warn('DevTools attempted to open in production - closing');
-          mainWindow.webContents.closeDevTools();
-        });
-      }
+      this.setupDevToolsSecurity(mainWindow);
     });
 
-    // Add event listeners for debugging
     mainWindow.webContents.on('did-start-loading', () => {
       logger.info('Window started loading');
     });
 
-    // Inject CSS to hide scrollbar as early as possible (before page renders)
+    // Inject CSS to hide scrollbar on loading/setup screens
     mainWindow.webContents.on('dom-ready', () => {
       const currentUrl = mainWindow.webContents.getURL();
-      // Only hide scrollbar on loading/setup screens (not on the Python server frontend)
-      if (!currentUrl.includes(SERVER_CONFIG.host) && !currentUrl.includes('127.0.0.1:') && !currentUrl.includes('localhost:')) {
-        mainWindow.webContents.insertCSS(`
-          ::-webkit-scrollbar {
-            display: none !important;
-            width: 0 !important;
-            height: 0 !important;
-          }
-          html, body, #root {
-            overflow: hidden !important;
-            scrollbar-width: none !important;
-            -ms-overflow-style: none !important;
-          }
-        `);
-      }
+      const isServerUrl = currentUrl.includes(SERVER_CONFIG.host) ||
+                         currentUrl.includes('127.0.0.1:') ||
+                         currentUrl.includes('localhost:');
+      this.injectScrollbarCSS(mainWindow, !isServerUrl);
     });
 
     mainWindow.webContents.on('did-finish-load', () => {
@@ -197,10 +275,7 @@ export class ScopeElectronAppService {
       this.appState.mainWindow = null;
     });
 
-    // Add right-click context menu for the title bar area
-    // This creates an app-level menu that appears on right-click in the title bar region
     this.setupWindowContextMenu(mainWindow);
-
     this.appState.mainWindow = mainWindow;
     return mainWindow;
   }
@@ -242,49 +317,10 @@ export class ScopeElectronAppService {
   loadFrontend(): void {
     if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
       try {
-        // Once server is running, load the actual frontend from Python server
         this.appState.mainWindow.loadURL(SERVER_CONFIG.url);
-
-        // Inject dark scrollbar styling and draggable title bar once the page loads
         this.appState.mainWindow.webContents.once('did-finish-load', () => {
           if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
-            this.appState.mainWindow.webContents.insertCSS(`
-              ::-webkit-scrollbar {
-                width: 10px;
-                height: 10px;
-              }
-              ::-webkit-scrollbar-track {
-                background: hsl(0, 0%, 10%);
-              }
-              ::-webkit-scrollbar-thumb {
-                background: hsl(0, 0%, 25%);
-                border-radius: 5px;
-              }
-              ::-webkit-scrollbar-thumb:hover {
-                background: hsl(0, 0%, 35%);
-              }
-              ::-webkit-scrollbar-corner {
-                background: hsl(0, 0%, 10%);
-              }
-              /* Draggable title bar region for Windows/macOS with hidden title bar */
-              body::before {
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 32px;
-                -webkit-app-region: drag;
-                z-index: 10000;
-                pointer-events: auto;
-              }
-              /* Make interactive elements non-draggable */
-              button, input, textarea, select, a,
-              [role="button"], [role="textbox"], [role="combobox"],
-              [contenteditable="true"] {
-                -webkit-app-region: no-drag;
-              }
-            `);
+            this.injectScrollbarCSS(this.appState.mainWindow, false);
           }
         });
       } catch (err) {
@@ -294,34 +330,7 @@ export class ScopeElectronAppService {
   }
 
   createTray(): void {
-    // Create a simple tray icon
-    let iconPath: string;
-    const isWindows = process.platform === 'win32';
-
-    if (app.isPackaged) {
-      const assetsPath = path.join(process.resourcesPath, 'app', 'assets');
-      if (isWindows) {
-        // Windows: prefer .ico for tray icons
-        iconPath = path.join(assetsPath, 'icon.ico');
-      } else {
-        // macOS/Linux: use PNG
-        const trayIconPath = path.join(assetsPath, 'tray-icon.png');
-        const fallbackIconPath = path.join(assetsPath, 'icon.png');
-        iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
-      }
-    } else {
-      const assetsPath = path.join(__dirname, '../../assets');
-      if (isWindows) {
-        // Windows: prefer .ico for tray icons
-        iconPath = path.join(assetsPath, 'icon.ico');
-      } else {
-        // macOS/Linux: use PNG
-        const trayIconPath = path.join(assetsPath, 'tray-icon.png');
-        const fallbackIconPath = path.join(assetsPath, 'icon.png');
-        iconPath = fs.existsSync(trayIconPath) ? trayIconPath : fallbackIconPath;
-      }
-    }
-
+    const iconPath = this.getTrayIconPath();
     logger.info(`Creating tray with icon: ${iconPath}, exists: ${fs.existsSync(iconPath)}`);
     const icon = nativeImage.createFromPath(iconPath);
     logger.info(`Tray icon isEmpty: ${icon.isEmpty()}, size: ${icon.getSize().width}x${icon.getSize().height}`);
@@ -362,33 +371,15 @@ export class ScopeElectronAppService {
   }
 
   sendSetupStatus(status: string): void {
-    if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
-      try {
-        this.appState.mainWindow.webContents.send(IPC_CHANNELS.SETUP_STATUS, status);
-      } catch (err) {
-        logger.error('Failed to send setup status:', err);
-      }
-    }
+    this.sendIPC(IPC_CHANNELS.SETUP_STATUS, status);
   }
 
   sendServerStatus(isRunning: boolean): void {
-    if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
-      try {
-        this.appState.mainWindow.webContents.send(IPC_CHANNELS.SERVER_STATUS, isRunning);
-      } catch (err) {
-        logger.error('Failed to send server status:', err);
-      }
-    }
+    this.sendIPC(IPC_CHANNELS.SERVER_STATUS, isRunning);
   }
 
   sendServerError(error: string): void {
-    if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
-      try {
-        this.appState.mainWindow.webContents.send(IPC_CHANNELS.SERVER_ERROR, error);
-      } catch (err) {
-        logger.error('Failed to send server error:', err);
-      }
-    }
+    this.sendIPC(IPC_CHANNELS.SERVER_ERROR, error);
   }
 
   waitForMainWindowLoad(): Promise<void> {
@@ -398,13 +389,11 @@ export class ScopeElectronAppService {
         return;
       }
 
-      // Add timeout to prevent hanging forever
       const timeout = setTimeout(() => {
         logger.warn('Window load timeout, proceeding anyway');
         resolve();
-      }, 10000); // 10 second timeout
+      }, TIMEOUTS.WINDOW_LOAD);
 
-      // Check if already loaded
       if (this.appState.mainWindow.webContents.isLoading() === false) {
         clearTimeout(timeout);
         resolve();
@@ -416,7 +405,6 @@ export class ScopeElectronAppService {
         resolve();
       });
 
-      // Also handle navigation failures
       this.appState.mainWindow.webContents.once('did-fail-load', () => {
         clearTimeout(timeout);
         logger.warn('Window failed to load, proceeding anyway');
@@ -460,74 +448,37 @@ export class ScopeElectronAppService {
   }
 
   showLogsWindow(): void {
-    // If logs window already exists, focus it
     if (this.logsWindow && !this.logsWindow.isDestroyed()) {
       this.logsWindow.focus();
       return;
     }
 
-    const logPath = getLogPath();
-
-    // Create isolated session for logs window (session partitioning)
     const logsSession = session.fromPartition('persist:logs-viewer');
-
-    // Create logs viewer window with isolated session
     this.logsWindow = new BrowserWindow({
-      width: 900,
-      height: 600,
+      width: WINDOW_CONFIG.LOGS.width,
+      height: WINDOW_CONFIG.LOGS.height,
       title: 'Server Logs',
-      backgroundColor: '#1a1a1a',
+      backgroundColor: COLORS.LOGS_BACKGROUND,
       autoHideMenuBar: true,
       webPreferences: {
-        session: logsSession, // Use isolated session
+        session: logsSession,
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
       },
     });
 
-    // Security: Disable DevTools in production for logs window
-    if (app.isPackaged) {
-      this.logsWindow.webContents.closeDevTools();
-      this.logsWindow.webContents.on('devtools-opened', () => {
-        logger.warn('DevTools attempted to open in logs window (production) - closing');
-        this.logsWindow?.webContents.closeDevTools();
-      });
-    }
+    this.setupDevToolsSecurity(this.logsWindow);
 
-    // Read log file and display it
-    let logContent = '';
-    try {
-      if (fs.existsSync(logPath)) {
-        logContent = fs.readFileSync(logPath, 'utf-8');
-        // Get the last 500 lines for better performance
-        const lines = logContent.split('\n');
-        if (lines.length > 500) {
-          logContent = lines.slice(-500).join('\n');
-        }
-      } else {
-        logContent = 'No logs found.';
-      }
-    } catch (err) {
-      logContent = `Error reading logs: ${err}`;
-    }
+    const logPath = getLogPath();
+    const logContent = this.readLogFile();
 
-    // Load the log viewer HTML file with query parameters
-    // This is more secure than using data: URLs
-    let logViewerPath: string;
-    if (app.isPackaged) {
-      logViewerPath = path.join(process.resourcesPath, 'app', '.vite', 'build', 'renderer', 'LogViewer.html');
-    } else {
-      logViewerPath = path.join(__dirname, '../../src/components/LogViewer.html');
-    }
+    const logViewerPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'app', '.vite', 'build', 'renderer', 'LogViewer.html')
+      : path.join(__dirname, '../../src/components/LogViewer.html');
 
-    // Pass log content and path as URL parameters
-    // Note: loadFile's query option handles URL encoding automatically
     this.logsWindow.loadFile(logViewerPath, {
-      query: {
-        content: logContent,
-        path: logPath,
-      },
+      query: { content: logContent, path: logPath },
     }).catch((err) => {
       logger.error('Failed to load log viewer:', err);
     });
@@ -538,20 +489,6 @@ export class ScopeElectronAppService {
   }
 
   getLogs(): string {
-    const logPath = getLogPath();
-    try {
-      if (fs.existsSync(logPath)) {
-        const content = fs.readFileSync(logPath, 'utf-8');
-        // Return last 500 lines
-        const lines = content.split('\n');
-        if (lines.length > 500) {
-          return lines.slice(-500).join('\n');
-        }
-        return content;
-      }
-      return 'No logs found.';
-    } catch (err) {
-      return `Error reading logs: ${err}`;
-    }
+    return this.readLogFile();
   }
 }
