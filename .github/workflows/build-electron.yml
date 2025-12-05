@@ -62,6 +62,8 @@ jobs:
       - name: Build Electron app (Windows)
         working-directory: ./app
         run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Sign files with Azure Trusted Signing
         if: env.AZURE_CLIENT_ID != ''
