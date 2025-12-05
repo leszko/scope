@@ -48,13 +48,14 @@ export const UV_DOWNLOAD_URLS = {
 
 // Default port - using 52178 as it's less commonly used than 8000
 const DEFAULT_PORT = 52178;
+const DEFAULT_HOST = '127.0.0.1';
 
 // Mutable server config - port may change if default is busy
 export const SERVER_CONFIG = {
-  host: process.env.SCOPE_SERVER_HOST || '127.0.0.1',
-  port: parseInt(process.env.SCOPE_SERVER_PORT || String(DEFAULT_PORT), 10),
+  host: DEFAULT_HOST,
+  port: DEFAULT_PORT,
   get url() {
-    return process.env.SCOPE_SERVER_URL || `http://${this.host}:${this.port}`;
+    return `http://${this.host}:${this.port}`;
   },
 };
 
@@ -62,6 +63,9 @@ export const SERVER_CONFIG = {
  * Update the server port (called when finding an available port)
  */
 export const setServerPort = (port: number): void => {
+  if (port < 1 || port > 65535) {
+    throw new Error(`Invalid port number: ${port}. Must be between 1 and 65535.`);
+  }
   SERVER_CONFIG.port = port;
 };
 
@@ -70,29 +74,15 @@ export const setServerPort = (port: number): void => {
  * Throws an error if required configuration is missing or invalid
  */
 export const validateConfig = (): void => {
-  const errors: string[] = [];
-
-  // Validate server configuration
-  if (!SERVER_CONFIG.host || SERVER_CONFIG.host.trim() === '') {
-    errors.push('SERVER_CONFIG.host is required and cannot be empty');
+  // Validate port is in valid range
+  if (SERVER_CONFIG.port < 1 || SERVER_CONFIG.port > 65535) {
+    throw new Error(`SERVER_CONFIG.port must be a valid port number (1-65535), got: ${SERVER_CONFIG.port}`);
   }
 
-  if (isNaN(SERVER_CONFIG.port) || SERVER_CONFIG.port < 1 || SERVER_CONFIG.port > 65535) {
-    errors.push(`SERVER_CONFIG.port must be a valid port number (1-65535), got: ${SERVER_CONFIG.port}`);
-  }
-
-  if (!SERVER_CONFIG.url || !SERVER_CONFIG.url.startsWith('http')) {
-    errors.push(`SERVER_CONFIG.url must be a valid HTTP URL, got: ${SERVER_CONFIG.url}`);
-  }
-
-  // Validate UV download URLs are present
+  // Validate UV download URLs are present for current platform
   const platform = process.platform as keyof typeof UV_DOWNLOAD_URLS;
   if (!UV_DOWNLOAD_URLS[platform]) {
-    errors.push(`Unsupported platform: ${platform}`);
-  }
-
-  if (errors.length > 0) {
-    throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
+    throw new Error(`Unsupported platform: ${platform}`);
   }
 };
 

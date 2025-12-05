@@ -11,22 +11,15 @@ vi.mock('electron', () => ({
 
 describe('Configuration Utilities', () => {
   describe('validateConfig', () => {
-    beforeEach(() => {
-      // Reset environment variables before each test
-      delete process.env.SCOPE_SERVER_HOST;
-      delete process.env.SCOPE_SERVER_PORT;
-      delete process.env.SCOPE_SERVER_URL;
-    });
-
     it('should validate successfully with default configuration', () => {
       expect(() => validateConfig()).not.toThrow();
     });
 
     it('should have valid SERVER_CONFIG defaults', () => {
-      expect(SERVER_CONFIG.host).toBeDefined();
+      expect(SERVER_CONFIG.host).toBe('127.0.0.1');
       expect(SERVER_CONFIG.port).toBeGreaterThan(0);
       expect(SERVER_CONFIG.port).toBeLessThanOrEqual(65535);
-      expect(SERVER_CONFIG.url).toMatch(/^http/);
+      expect(SERVER_CONFIG.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     });
 
     it('should have UV download URLs for supported platforms', () => {
