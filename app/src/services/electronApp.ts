@@ -85,9 +85,8 @@ export class ScopeElectronAppService {
         preload: preloadPath,
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false, // Disabled because we need Node.js APIs in preload for IPC
+        sandbox: true, // Enable sandboxing for security
         webSecurity: true,
-        allowRunningInsecureContent: false,
         experimentalFeatures: false,
       },
       show: false, // Don't show until ready
@@ -450,6 +449,7 @@ export class ScopeElectronAppService {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
       },
     });
 
@@ -470,103 +470,27 @@ export class ScopeElectronAppService {
       logContent = `Error reading logs: ${err}`;
     }
 
-    // Escape HTML entities for safe display
-    const escapedContent = logContent
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+    // Load the log viewer HTML file with query parameters
+    // This is more secure than using data: URLs
+    let logViewerPath: string;
+    if (app.isPackaged) {
+      logViewerPath = path.join(process.resourcesPath, 'app', '.vite', 'build', 'renderer', 'LogViewer.html');
+    } else {
+      logViewerPath = path.join(__dirname, '../../src/components/LogViewer.html');
+    }
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Server Logs</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            body {
-              font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-              background-color: #0f0f0f;
-              color: #e0e0e0;
-              padding: 16px;
-              overflow: auto;
-            }
-            .header {
-              position: sticky;
-              top: -16px;
-              background: #0f0f0f;
-              padding: 12px 0;
-              margin-bottom: 12px;
-              border-bottom: 1px solid #333;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .header h1 {
-              font-size: 18px;
-              font-weight: 600;
-              color: #fff;
-            }
-            .header button {
-              background: #2a2a2a;
-              border: 1px solid #444;
-              color: #e0e0e0;
-              padding: 8px 16px;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 13px;
-            }
-            .header button:hover {
-              background: #3a3a3a;
-            }
-            .log-path {
-              font-size: 11px;
-              color: #888;
-              margin-bottom: 16px;
-            }
-            pre {
-              font-size: 12px;
-              line-height: 1.5;
-              white-space: pre-wrap;
-              word-wrap: break-word;
-            }
-            .info { color: #4fc3f7; }
-            .error { color: #ef5350; }
-            .warn { color: #ffb74d; }
-            .server { color: #81c784; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Server Logs</h1>
-            <button onclick="location.reload()">Refresh</button>
-          </div>
-          <div class="log-path">Log file: ${logPath.replace(/\\/g, '\\\\')}</div>
-          <pre id="logs">${escapedContent}</pre>
-          <script>
-            // Scroll to bottom
-            window.scrollTo(0, document.body.scrollHeight);
+    // Encode the log content and path as URL parameters
+    const encodedContent = encodeURIComponent(logContent);
+    const encodedPath = encodeURIComponent(logPath);
 
-            // Apply syntax highlighting
-            const pre = document.getElementById('logs');
-            let html = pre.innerHTML;
-            html = html.replace(/\\[INFO\\]/g, '<span class="info">[INFO]</span>');
-            html = html.replace(/\\[ERROR\\]/g, '<span class="error">[ERROR]</span>');
-            html = html.replace(/\\[WARN\\]/g, '<span class="warn">[WARN]</span>');
-            html = html.replace(/\\[SERVER\\]/g, '<span class="server">[SERVER]</span>');
-            pre.innerHTML = html;
-          </script>
-        </body>
-      </html>
-    `;
-
-    this.logsWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+    this.logsWindow.loadFile(logViewerPath, {
+      query: {
+        content: encodedContent,
+        path: encodedPath,
+      },
+    }).catch((err) => {
+      logger.error('Failed to load log viewer:', err);
+    });
 
     this.logsWindow.on('closed', () => {
       this.logsWindow = null;

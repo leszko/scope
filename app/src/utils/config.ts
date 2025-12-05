@@ -47,10 +47,41 @@ export const UV_DOWNLOAD_URLS = {
 } as const;
 
 export const SERVER_CONFIG = {
-  host: '127.0.0.1',
-  port: 8000,
-  url: 'http://127.0.0.1:8000',
+  host: process.env.SCOPE_SERVER_HOST || '127.0.0.1',
+  port: parseInt(process.env.SCOPE_SERVER_PORT || '8000', 10),
+  url: process.env.SCOPE_SERVER_URL || 'http://127.0.0.1:8000',
 } as const;
+
+/**
+ * Validate critical configuration at startup
+ * Throws an error if required configuration is missing or invalid
+ */
+export const validateConfig = (): void => {
+  const errors: string[] = [];
+
+  // Validate server configuration
+  if (!SERVER_CONFIG.host || SERVER_CONFIG.host.trim() === '') {
+    errors.push('SERVER_CONFIG.host is required and cannot be empty');
+  }
+
+  if (isNaN(SERVER_CONFIG.port) || SERVER_CONFIG.port < 1 || SERVER_CONFIG.port > 65535) {
+    errors.push(`SERVER_CONFIG.port must be a valid port number (1-65535), got: ${SERVER_CONFIG.port}`);
+  }
+
+  if (!SERVER_CONFIG.url || !SERVER_CONFIG.url.startsWith('http')) {
+    errors.push(`SERVER_CONFIG.url must be a valid HTTP URL, got: ${SERVER_CONFIG.url}`);
+  }
+
+  // Validate UV download URLs are present
+  const platform = process.platform as keyof typeof UV_DOWNLOAD_URLS;
+  if (!UV_DOWNLOAD_URLS[platform]) {
+    errors.push(`Unsupported platform: ${platform}`);
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
+  }
+};
 
 /**
  * Build an enhanced PATH that includes common installation locations.

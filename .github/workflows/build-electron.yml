@@ -42,6 +42,11 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      - name: Security audit - Frontend
+        working-directory: ./frontend
+        run: npm audit --audit-level=moderate
+        continue-on-error: true  # Don't fail build on audit issues, but report them
+
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
@@ -49,6 +54,15 @@ jobs:
       - name: Install app dependencies
         working-directory: ./app
         run: npm ci
+
+      - name: Security audit - Electron App
+        working-directory: ./app
+        run: npm audit --audit-level=moderate
+        continue-on-error: true  # Don't fail build on audit issues, but report them
+
+      - name: Run tests
+        working-directory: ./app
+        run: npm test
 
       - name: Build application
         working-directory: ./app

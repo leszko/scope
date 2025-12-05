@@ -13,6 +13,7 @@ files:
   - package.json
   - node_modules/**/*
   - assets/**/*
+  - src/components/LogViewer.html
   - "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
   - "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
   - "!node_modules/*.d.ts"
@@ -26,6 +27,12 @@ files:
   - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
 
 # Asar configuration - disabled to allow Python file access
+# Note: ASAR is intentionally disabled because the app needs to:
+# 1. Execute Python scripts from the filesystem
+# 2. Allow uv package manager to access Python project files
+# 3. Enable dynamic loading of Python modules
+# Trade-off: Slightly less secure but necessary for Python interop
+# Mitigation: Strong CSP, sandboxing, and code signing are enabled
 asar: false
 
 # Build hooks
@@ -76,7 +83,7 @@ win:
       arch:
         - x64
   publisherName: Daydream
-  verifyUpdateCodeSignature: false
+  verifyUpdateCodeSignature: true # Verify code signatures for security
 
 nsis:
   oneClick: false

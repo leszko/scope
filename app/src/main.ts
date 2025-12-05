@@ -8,7 +8,7 @@ import { ScopeSetupService } from './services/setup';
 import { ScopePythonProcessService } from './services/pythonProcess';
 import { ScopeElectronAppService } from './services/electronApp';
 import { logger } from './utils/logger';
-import { SERVER_CONFIG } from './utils/config';
+import { SERVER_CONFIG, validateConfig } from './utils/config';
 
 // Configure electron-log for auto-updater
 log.transports.file.level = 'info';
@@ -79,6 +79,20 @@ autoUpdater.on('update-downloaded', (info) => {
 
 // Setup logging early
 logger.info('Application starting...');
+
+// Validate configuration early to catch issues at startup
+try {
+  validateConfig();
+  logger.info('Configuration validated successfully');
+} catch (err) {
+  logger.error('Configuration validation failed:', err);
+  dialog.showErrorBox(
+    'Configuration Error',
+    `The application configuration is invalid:\n\n${err instanceof Error ? err.message : String(err)}\n\nThe application will now exit.`
+  );
+  app.quit();
+  process.exit(1);
+}
 
 /**
  * Main application state
