@@ -90,57 +90,52 @@ export class ScopeElectronAppService {
     });
   }
 
-  private injectScrollbarCSS(window: BrowserWindow, hideScrollbar: boolean = false): void {
-    const css = hideScrollbar
-      ? `
-        ::-webkit-scrollbar {
-          display: none !important;
-          width: 0 !important;
-          height: 0 !important;
-        }
-        html, body, #root {
-          overflow: hidden !important;
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-        }
-      `
-      : `
-        ::-webkit-scrollbar {
-          width: 10px;
-          height: 10px;
-        }
-        ::-webkit-scrollbar-track {
-          background: hsl(0, 0%, 10%);
-        }
-        ::-webkit-scrollbar-thumb {
-          background: hsl(0, 0%, 25%);
-          border-radius: 5px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: hsl(0, 0%, 35%);
-        }
-        ::-webkit-scrollbar-corner {
-          background: hsl(0, 0%, 10%);
-        }
-        /* Draggable title bar region for Windows/macOS with hidden title bar */
-        body::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 32px;
-          -webkit-app-region: drag;
-          z-index: 10000;
-          pointer-events: auto;
-        }
-        /* Make interactive elements non-draggable */
-        button, input, textarea, select, a,
-        [role="button"], [role="textbox"], [role="combobox"],
-        [contenteditable="true"] {
-          -webkit-app-region: no-drag;
-        }
-      `;
+  /**
+   * Injects CSS for the Python server frontend:
+   * - Styled dark scrollbars
+   * - Draggable title bar (needed for hidden title bar on Windows/macOS)
+   *
+   * Note: This is only needed for the Python frontend, not the Electron renderer
+   * which already has these styles in index.css
+   */
+  private injectFrontendCSS(window: BrowserWindow): void {
+    const css = `
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: hsl(0, 0%, 10%);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: hsl(0, 0%, 25%);
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: hsl(0, 0%, 35%);
+      }
+      ::-webkit-scrollbar-corner {
+        background: hsl(0, 0%, 10%);
+      }
+      /* Draggable title bar region for Windows/macOS with hidden title bar */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 32px;
+        -webkit-app-region: drag;
+        z-index: 10000;
+        pointer-events: auto;
+      }
+      /* Make interactive elements non-draggable */
+      button, input, textarea, select, a,
+      [role="button"], [role="textbox"], [role="combobox"],
+      [contenteditable="true"] {
+        -webkit-app-region: no-drag;
+      }
+    `;
     window.webContents.insertCSS(css);
   }
 
@@ -254,15 +249,6 @@ export class ScopeElectronAppService {
       logger.info('Window started loading');
     });
 
-    // Inject CSS to hide scrollbar on loading/setup screens
-    mainWindow.webContents.on('dom-ready', () => {
-      const currentUrl = mainWindow.webContents.getURL();
-      const isServerUrl = currentUrl.includes(SERVER_CONFIG.host) ||
-                         currentUrl.includes('127.0.0.1:') ||
-                         currentUrl.includes('localhost:');
-      this.injectScrollbarCSS(mainWindow, !isServerUrl);
-    });
-
     mainWindow.webContents.on('did-finish-load', () => {
       logger.info('Window finished loading');
     });
@@ -320,7 +306,9 @@ export class ScopeElectronAppService {
         this.appState.mainWindow.loadURL(SERVER_CONFIG.url);
         this.appState.mainWindow.webContents.once('did-finish-load', () => {
           if (this.appState.mainWindow && !this.appState.mainWindow.isDestroyed()) {
-            this.injectScrollbarCSS(this.appState.mainWindow, false);
+            // Inject CSS for styled scrollbars and draggable title bar
+            // (needed because Python frontend doesn't have these styles)
+            this.injectFrontendCSS(this.appState.mainWindow);
           }
         });
       } catch (err) {
