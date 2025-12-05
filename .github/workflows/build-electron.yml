@@ -5,23 +5,11 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  # Allow manual triggering from GitHub Actions UI
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g., v0.1.0-alpha.8)'
-        required: false
-        type: string
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    name: Build Windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -69,28 +57,36 @@ jobs:
         run: npm run compile
 
       - name: Build Electron app (Windows)
-        if: matrix.os == 'windows-latest' && !startsWith(github.ref, 'refs/tags/v')
         working-directory: ./app
         run: npm run dist:win
-        env:
-          # Windows code signing (optional)
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
-      - name: Build and Publish Electron app (Windows)
-        if: matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/v')
+      - name: Sign files with Azure Trusted Signing
+        if: secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_ENDPOINT != '' && secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME != '' && secrets.AZURE_CERTIFICATE_PROFILE_NAME != ''
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}\app\dist
+          files-folder-filter: exe,dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Publish Electron app (Windows)
+        if: startsWith(github.ref, 'refs/tags/v')
         working-directory: ./app
         run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          # Windows code signing (optional)
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets. _KEY_PASSWORD }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-artifacts
+          name: windows-artifacts
           path: |
             app/dist/**/*
           retention-days: 30
