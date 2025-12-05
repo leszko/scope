@@ -10,6 +10,13 @@ jobs:
   build:
     name: Build Windows
     runs-on: windows-latest
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+      AZURE_TRUSTED_SIGNING_ACCOUNT_NAME: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+      AZURE_CERTIFICATE_PROFILE_NAME: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
 
     steps:
       - name: Checkout repository
@@ -61,15 +68,15 @@ jobs:
         run: npm run dist:win
 
       - name: Sign files with Azure Trusted Signing
-        if: secrets.AZURE_CLIENT_ID && secrets.AZURE_TENANT_ID && secrets.AZURE_CLIENT_SECRET && secrets.AZURE_ENDPOINT && secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME && secrets.AZURE_CERTIFICATE_PROFILE_NAME
+        if: env.AZURE_CLIENT_ID != ''
         uses: azure/trusted-signing-action@v0
         with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ secrets.AZURE_ENDPOINT }}
-          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
-          certificate-profile-name: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
+          azure-tenant-id: ${{ env.AZURE_TENANT_ID }}
+          azure-client-id: ${{ env.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ env.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ env.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.AZURE_CERTIFICATE_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\app\dist
           files-folder-filter: exe,dll
           file-digest: SHA256
