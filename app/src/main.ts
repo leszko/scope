@@ -77,6 +77,58 @@ autoUpdater.on('update-downloaded', (info) => {
   });
 });
 
+// IPC Rate Limiting Configuration
+const IPC_RATE_LIMITS = {
+  windowMs: 1000, // 1 second window
+  maxCalls: 100,  // Maximum 100 calls per second per channel
+  maxCallsPerMinute: 1000 // Maximum 1000 calls per minute per channel
+};
+
+const ipcCallCounts = new Map<string, { count: number; minuteCount: number; resetTime: number; minuteResetTime: number }>();
+
+/**
+ * Validate IPC rate limits to prevent DoS attacks
+ */
+function validateIPCRateLimit(channel: string): boolean {
+  const now = Date.now();
+  const current = ipcCallCounts.get(channel);
+
+  // Initialize or reset counters if needed
+  if (!current || now > current.resetTime) {
+    ipcCallCounts.set(channel, {
+      count: 1,
+      minuteCount: 1,
+      resetTime: now + IPC_RATE_LIMITS.windowMs,
+      minuteResetTime: now + 60000 // 1 minute
+    });
+    return true;
+  }
+
+  // Reset minute counter if minute window has passed
+  if (now > current.minuteResetTime) {
+    current.minuteCount = 0;
+    current.minuteResetTime = now + 60000;
+  }
+
+  // Check per-second rate limit
+  if (current.count >= IPC_RATE_LIMITS.maxCalls) {
+    logger.warn(`IPC rate limit exceeded for channel: ${channel} (${current.count} calls in ${IPC_RATE_LIMITS.windowMs}ms)`);
+    return false;
+  }
+
+  // Check per-minute rate limit
+  if (current.minuteCount >= IPC_RATE_LIMITS.maxCallsPerMinute) {
+    logger.warn(`IPC minute rate limit exceeded for channel: ${channel} (${current.minuteCount} calls in 1 minute)`);
+    return false;
+  }
+
+  // Increment counters
+  current.count++;
+  current.minuteCount++;
+
+  return true;
+}
+
 // Setup logging early
 logger.info('Application starting...');
 
@@ -147,6 +199,11 @@ function validateIPC<T extends (...args: any[]) => Promise<any>>(
 ): T {
   return (async (...args: any[]) => {
     try {
+      // Apply rate limiting
+      if (!validateIPCRateLimit(handlerName)) {
+        throw new Error(`IPC rate limit exceeded for ${handlerName}`);
+      }
+
       // Log IPC call for debugging (only in development)
       if (!app.isPackaged) {
         logger.debug(`IPC call: ${handlerName}`, args);
@@ -390,30 +447,155 @@ async function startServer(): Promise<void> {
 
 /**
  * Configure session permissions
- * Restricts what permissions the app can request
+ * Shows user consent dialogs for permissions instead of denying all
  */
-function configureSessionPermissions(): void {
-  // Set permission request handler - deny all by default
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    // List of allowed permissions (empty by default - deny all)
-    const allowedPermissions: string[] = [];
+async function configureSessionPermissions(): Promise<void> {
+  // Set permission request handler - ask user for consent
+  session.defaultSession.setPermissionRequestHandler(async (webContents, permission, callback, details) => {
+    try {
+      // Check if main window exists
+      if (!appState.mainWindow || appState.mainWindow.isDestroyed()) {
+        logger.warn(`Permission denied (no window): ${permission}`);
+        callback(false);
+        return;
+      }
 
-    if (allowedPermissions.includes(permission)) {
-      logger.info(`Permission granted: ${permission}`);
-      callback(true);
-    } else {
-      logger.warn(`Permission denied: ${permission}`);
+      // Define user-friendly permission descriptions
+      const permissionDescriptions: Record<string, string> = {
+        'media': 'Access to camera and microphone for video/audio features',
+        'geolocation': 'Access to your location',
+        'notifications': 'Show desktop notifications',
+        'midi': 'Access to MIDI devices',
+        'midiSysex': 'Access to MIDI devices with system exclusive messages',
+        'pointerLock': 'Lock the mouse pointer (for games or 3D applications)',
+        'fullscreen': 'Enter fullscreen mode',
+        'openExternal': 'Open links in external applications',
+        'clipboard-read': 'Read from clipboard',
+        'clipboard-sanitized-write': 'Write to clipboard',
+        'keyboardLock': 'Lock keyboard input',
+        'unknown': 'Unknown permission request'
+      };
+
+      const description = permissionDescriptions[permission] || permissionDescriptions.unknown;
+      const requestingUrl = details.requestingUrl || 'Unknown source';
+
+      // Show permission dialog to user
+      const result = await dialog.showMessageBox(appState.mainWindow, {
+        type: 'question',
+        title: 'Permission Request',
+        message: `Allow "${permission}" permission?`,
+        detail: `${description}\n\nRequested by: ${requestingUrl}`,
+        buttons: ['Allow', 'Deny'],
+        defaultId: 0,
+        cancelId: 1,
+        checkboxLabel: 'Remember this decision',
+        checkboxChecked: false
+      });
+
+      const granted = result.response === 0;
+      const remember = result.checkboxChecked;
+
+      if (granted) {
+        logger.info(`Permission granted: ${permission} (remember: ${remember})`);
+        if (remember) {
+          // TODO: Store permission decision persistently
+          logger.info(`Would persist permission grant for: ${permission}`);
+        }
+      } else {
+        logger.info(`Permission denied: ${permission} (remember: ${remember})`);
+        if (remember) {
+          // TODO: Store permission denial persistently
+          logger.info(`Would persist permission denial for: ${permission}`);
+        }
+      }
+
+      callback(granted);
+    } catch (error) {
+      logger.error('Error handling permission request:', error);
+      // Deny permission on error for security
       callback(false);
     }
   });
 
-  // Set permission check handler - deny all by default
+  // Set permission check handler - deny all by default for security
   session.defaultSession.setPermissionCheckHandler(() => {
-    // Deny all permission checks by default
+    // Permission checks are handled by the request handler above
+    // This ensures no permissions are granted without user consent
     return false;
   });
 
-  logger.info('Session permissions configured');
+  logger.info('Session permissions configured with user consent dialogs');
+}
+
+/**
+ * Configure process-level security hardening
+ * Adds webContents event handlers and security measures
+ */
+function configureProcessSecurity(): void {
+  // Global webContents security handlers
+  app.on('web-contents-created', (event, contents) => {
+    // Prevent new window creation (popup blocking)
+    contents.on('new-window', (event, navigationUrl) => {
+      logger.warn(`Blocked new window creation: ${navigationUrl}`);
+      event.preventDefault();
+    });
+
+    // Enhanced navigation protection
+    contents.on('will-navigate', (event, navigationUrl) => {
+      try {
+        const parsedUrl = new URL(navigationUrl);
+
+        // Allow localhost/dev server in development
+        const allowedOrigins = [SERVER_CONFIG.url];
+        if (!app.isPackaged) {
+          allowedOrigins.push('http://localhost:5173');
+        }
+
+        const isAllowed = allowedOrigins.some(origin => parsedUrl.origin === origin);
+
+        if (!isAllowed) {
+          logger.warn(`Blocked navigation to external URL: ${navigationUrl}`);
+          event.preventDefault();
+        }
+      } catch (err) {
+        logger.warn(`Blocked navigation to invalid URL: ${navigationUrl}`);
+        event.preventDefault();
+      }
+    });
+
+    // Prevent navigation to about:blank and other schemes
+    contents.on('will-navigate', (event, navigationUrl) => {
+      if (navigationUrl.startsWith('about:') ||
+          navigationUrl.startsWith('javascript:') ||
+          navigationUrl.startsWith('data:') ||
+          navigationUrl.startsWith('file:')) {
+        logger.warn(`Blocked navigation to dangerous scheme: ${navigationUrl}`);
+        event.preventDefault();
+      }
+    });
+
+    // Monitor for DevTools opening in production
+    if (app.isPackaged) {
+      contents.on('devtools-opened', () => {
+        logger.warn('DevTools opened in production - this should be monitored');
+        // Note: We don't auto-close DevTools in production as it might be needed for debugging
+        // But we log it for security monitoring
+      });
+    }
+
+    // Prevent context menu in production (optional - can be enabled per window)
+    if (app.isPackaged) {
+      contents.on('context-menu', (event) => {
+        // Allow context menu for text input fields only
+        const target = event.params;
+        if (!target || !target.isEditable) {
+          event.preventDefault();
+        }
+      });
+    }
+  });
+
+  logger.info('Process-level security hardening configured');
 }
 
 /**
@@ -421,7 +603,10 @@ function configureSessionPermissions(): void {
  */
 app.on('ready', async () => {
   // Configure session permissions early
-  configureSessionPermissions();
+  await configureSessionPermissions();
+
+  // Configure process-level security hardening
+  configureProcessSecurity();
 
   // Check for updates (only in production)
   if (app.isPackaged) {
