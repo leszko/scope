@@ -153,6 +153,7 @@ const App = () => {
         background: 'hsl(0, 0%, 6%)',
         color: 'hsl(0, 0%, 90%)',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        overflow: 'hidden',
       }}>
         <div style={{
           fontSize: 16,
@@ -182,6 +183,7 @@ const App = () => {
         background: 'hsl(0, 0%, 6%)',
         color: 'hsl(0, 0%, 90%)',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        overflow: 'hidden',
       }}>
         <div style={{
           fontSize: 16,
@@ -219,6 +221,7 @@ const App = () => {
       background: 'hsl(0, 0%, 6%)',
       color: 'hsl(0, 0%, 90%)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      overflow: 'hidden',
     }}>
       <div style={{
         fontSize: 16,
