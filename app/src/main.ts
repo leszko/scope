@@ -29,7 +29,8 @@ autoUpdater.on('update-available', (info) => {
   logger.info('Update available:', info);
 
   // Notify user about available update
-  dialog.showMessageBox({
+  const mainWindow = appState.mainWindow;
+  const dialogOptions: Electron.MessageBoxOptions = {
     type: 'info',
     title: 'Update Available',
     message: `A new version ${info.version} is available!`,
@@ -37,11 +38,45 @@ autoUpdater.on('update-available', (info) => {
     buttons: ['Download', 'Later'],
     defaultId: 0,
     cancelId: 1
-  }).then(result => {
-    if (result.response === 0) {
-      autoUpdater.downloadUpdate();
-    }
-  });
+  };
+
+  (mainWindow ? dialog.showMessageBox(mainWindow, dialogOptions) : dialog.showMessageBox(dialogOptions))
+    .then(result => {
+      if (result.response === 0) {
+        logger.info('User clicked Download, starting update download...');
+        // Show feedback that download is starting
+        const downloadStartedOptions: Electron.MessageBoxOptions = {
+          type: 'info',
+          title: 'Downloading Update',
+          message: 'Downloading update...',
+          detail: 'The update is being downloaded in the background. You will be notified when it\'s ready.',
+          buttons: ['OK']
+        };
+
+        if (mainWindow) {
+          dialog.showMessageBox(mainWindow, downloadStartedOptions).catch(err => {
+            logger.error('Error showing download started dialog:', err);
+          });
+        } else {
+          dialog.showMessageBox(downloadStartedOptions).catch(err => {
+            logger.error('Error showing download started dialog:', err);
+          });
+        }
+
+        // Start download with proper error handling
+        autoUpdater.downloadUpdate().catch(err => {
+          logger.error('Failed to start download:', err);
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          dialog.showErrorBox(
+            'Download Failed',
+            `Failed to download update:\n\n${errorMessage}\n\nPlease check your internet connection and try again later.`
+          );
+        });
+      }
+    })
+    .catch(err => {
+      logger.error('Error showing update available dialog:', err);
+    });
 });
 
 autoUpdater.on('update-not-available', (info) => {
@@ -50,6 +85,18 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
   logger.error('Auto-updater error:', err);
+  const errorMessage = err instanceof Error ? err.message : String(err);
+
+  // Show user-friendly error dialog
+  // Note: showErrorBox is synchronous and doesn't return a promise
+  try {
+    dialog.showErrorBox(
+      'Update Error',
+      `An error occurred while checking for updates:\n\n${errorMessage}\n\nYou can try again later or download updates manually from the website.`
+    );
+  } catch (dialogErr) {
+    logger.error('Error showing error dialog:', dialogErr);
+  }
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
@@ -61,7 +108,8 @@ autoUpdater.on('update-downloaded', (info) => {
   updateDownloaded = true;
 
   // Notify user that update is ready
-  dialog.showMessageBox({
+  const mainWindow = appState.mainWindow;
+  const dialogOptions: Electron.MessageBoxOptions = {
     type: 'info',
     title: 'Update Ready',
     message: 'Update has been downloaded.',
@@ -69,12 +117,18 @@ autoUpdater.on('update-downloaded', (info) => {
     buttons: ['Restart Now', 'Later'],
     defaultId: 0,
     cancelId: 1
-  }).then(result => {
-    if (result.response === 0) {
-      // Quit and install
-      autoUpdater.quitAndInstall(false, true);
-    }
-  });
+  };
+
+  (mainWindow ? dialog.showMessageBox(mainWindow, dialogOptions) : dialog.showMessageBox(dialogOptions))
+    .then(result => {
+      if (result.response === 0) {
+        // Quit and install
+        autoUpdater.quitAndInstall(false, true);
+      }
+    })
+    .catch(err => {
+      logger.error('Error showing update downloaded dialog:', err);
+    });
 });
 
 // IPC Rate Limiting Configuration

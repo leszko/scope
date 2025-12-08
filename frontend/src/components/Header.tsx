@@ -11,10 +11,10 @@ export function Header({ className = "" }: HeaderProps) {
   const [reportBugOpen, setReportBugOpen] = useState(false);
 
   return (
-    <header className={`w-full bg-background px-6 py-4 ${className}`}>
-      <div className="flex items-center justify-between">
+    <header className={`w-full bg-background py-4 ${className}`}>
+      <div className="flex items-center px-4">
         <h1 className="text-xl font-medium text-foreground">Daydream Scope</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ml-auto">
           <Button
             variant="ghost"
             size="sm"
