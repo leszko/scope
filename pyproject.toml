@@ -61,9 +61,9 @@ build = "scope.server.build:main"
 download_models = "scope.server.download_models:main"
 
 [project.urls]
-Homepage = "https://github.com/daydreamlive/scope"
-Repository = "https://github.com/daydreamlive/scope"
-Issues = "https://github.com/daydreamlive/scope/issues"
+Homepage = "https://github.com/leszko/scope"
+Repository = "https://github.com/leszko/scope"
+Issues = "https://github.com/leszko/scope/issues"
 
 [tool.uv.extra-build-dependencies]
 flash-attn = [{ requirement = "torch", match-runtime = true, marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]

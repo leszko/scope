@@ -25,10 +25,10 @@
     "email": "rafal@livepeer.org"
   },
   "license": "MIT",
-  "homepage": "https://github.com/daydreamlive/scope",
+  "homepage": "https://github.com/leszko/scope",
   "repository": {
     "type": "git",
-    "url": "https://github.com/daydreamlive/scope.git"
+    "url": "https://github.com/leszko/scope.git"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
