@@ -85,6 +85,8 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
   logger.error('Auto-updater error:', err);
+  logger.error(`Current app version: ${app.getVersion()}`);
+  logger.error(`Updater currentVersion: ${autoUpdater.currentVersion}`);
   const errorMessage = err instanceof Error ? err.message : String(err);
 
   // Show user-friendly error dialog
@@ -664,8 +666,14 @@ app.on('ready', async () => {
 
   // Check for updates (only in production)
   if (app.isPackaged) {
+    // Log current app version for debugging
+    const currentVersion = app.getVersion();
+    logger.info(`Current app version: ${currentVersion}`);
+    logger.info(`Updater currentVersion: ${autoUpdater.currentVersion}`);
+
     // Check for updates after 3 seconds to let app initialize first
     setTimeout(() => {
+      logger.info(`Checking for updates from version: ${currentVersion}`);
       autoUpdater.checkForUpdates().catch(err => {
         logger.error('Failed to check for updates:', err);
       });

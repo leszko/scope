@@ -12,9 +12,9 @@ export function Header({ className = "" }: HeaderProps) {
 
   return (
     <header className={`w-full bg-background py-4 ${className}`}>
-      <div className="flex items-center px-4">
+      <div className="grid grid-cols-[1fr_auto] items-center w-full pl-4 pr-4 gap-4" style={{ paddingRight: 'max(1rem, 142px)' }}>
         <h1 className="text-xl font-medium text-foreground">Daydream Scope</h1>
-        <div className="flex items-center gap-3 ml-auto">
+        <div className="flex items-center gap-3 justify-end">
           <Button
             variant="ghost"
             size="sm"
