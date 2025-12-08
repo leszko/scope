@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { AppState } from '../types/services';
@@ -111,6 +111,18 @@ export class ScopeElectronAppService {
         z-index: 10000;
         pointer-events: auto;
       }
+      /* Add padding to body to prevent content from overlapping with title bar */
+      /* Prevent overflow by ensuring html and body don't exceed viewport height */
+      html {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        padding-top: 32px;
+        height: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
       /* Make interactive elements non-draggable */
       button, input, textarea, select, a,
       [role="button"], [role="textbox"], [role="combobox"],
@@ -199,10 +211,13 @@ export class ScopeElectronAppService {
       }
     });
 
-    // Security: Prevent new window creation (open external links)
+    // Security: Open external links in default browser
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
       if (!this.isAllowedUrl(url)) {
-        logger.warn(`Blocked new window to external URL: ${url}`);
+        // Open external URLs in the default browser
+        shell.openExternal(url).catch((err) => {
+          logger.error(`Failed to open external URL: ${url}`, err);
+        });
         return { action: 'deny' };
       }
       return { action: 'allow' };

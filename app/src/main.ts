@@ -1,4 +1,4 @@
-import { app, ipcMain, nativeImage, dialog, session } from 'electron';
+import { app, ipcMain, nativeImage, dialog, session, shell } from 'electron';
 import path from 'path';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -524,6 +524,22 @@ async function configureSessionPermissions(): Promise<void> {
     return false;
   });
 
+  // Disable cache in development mode to ensure fresh frontend code
+  if (!app.isPackaged) {
+    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      // Add cache-busting headers for all requests in development
+      callback({
+        requestHeaders: {
+          ...details.requestHeaders,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+    });
+    logger.info('Cache disabled in development mode');
+  }
+
   logger.info('Session permissions configured with user consent dialogs');
 }
 
@@ -533,11 +549,38 @@ async function configureSessionPermissions(): Promise<void> {
  */
 function configureProcessSecurity(): void {
   // Global webContents security handlers
-  app.on('web-contents-created', (event, contents) => {
-    // Prevent new window creation (popup blocking)
-    contents.on('new-window', (event, navigationUrl) => {
-      logger.warn(`Blocked new window creation: ${navigationUrl}`);
-      event.preventDefault();
+  app.on('web-contents-created', (_event, contents) => {
+    // Set up window open handler for all windows to open external links in default browser
+    contents.setWindowOpenHandler(({ url }) => {
+      try {
+        const parsedUrl = new URL(url);
+        // Check if it's an external URL (not localhost or the server)
+        const allowedOrigins = [SERVER_CONFIG.url];
+        if (!app.isPackaged) {
+          allowedOrigins.push('http://localhost:5173');
+        }
+
+        const isExternal = !allowedOrigins.some(origin => {
+          try {
+            return new URL(origin).origin === parsedUrl.origin;
+          } catch {
+            return false;
+          }
+        });
+
+        if (isExternal) {
+          // Open external URLs in the default browser
+          shell.openExternal(url).catch((err) => {
+            logger.error(`Failed to open external URL: ${url}`, err);
+          });
+          return { action: 'deny' };
+        }
+        return { action: 'allow' };
+      } catch (err) {
+        // Invalid URL, block it
+        logger.warn(`Blocked invalid URL: ${url}`);
+        return { action: 'deny' };
+      }
     });
 
     // Enhanced navigation protection
