@@ -105,11 +105,13 @@
     ${DoWhile} $6 != ""
         ${If} $6 != "."
         ${AndIf} $6 != ".."
-            IfFileExists "$2\extract\$6\uv.exe" 0 +4
+            ${If} ${FileExists} "$2\extract\$6\uv.exe"
                 CopyFiles /SILENT "$2\extract\$6\uv.exe" "$1\uv\uv.exe"
                 DetailPrint "UV installed successfully"
                 !insertmacro WriteLogWithTime "UV installed successfully from subdirectory: $6"
+                FindClose $5
                 Goto found_uv
+            ${EndIf}
         ${EndIf}
         FindNext $5 $6
     ${Loop}
