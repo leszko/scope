@@ -17,6 +17,11 @@ autoUpdater.logger = log;
 // Configure auto-updater
 autoUpdater.autoDownload = false; // Don't download automatically, ask user first
 autoUpdater.autoInstallOnAppQuit = true; // Install updates when app quits
+// TODO: Remove after Code Signing in place
+// Disable signature verification to allow unsigned updates
+// WARNING: This reduces security by allowing unsigned updates. Only use for development/testing.
+// @ts-ignore - verifySignature property exists but may not be in TypeScript definitions
+autoUpdater.verifySignature = false;
 
 // Auto-updater event handlers
 let updateDownloaded = false;
