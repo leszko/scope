@@ -82,7 +82,7 @@ win:
     - target: nsis
       arch:
         - x64
-  publisherName: Daydream
+  publisherName: Livepeer Inc.
   verifyUpdateCodeSignature: true # Verify code signatures for security
 
 nsis:
