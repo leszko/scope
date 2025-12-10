@@ -83,10 +83,14 @@ jobs:
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') && env.AZURE_CLIENT_ID != ''
-        working-directory: ./app
-        run: npx electron-builder --win --publish always
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            app/dist/*.exe
+            app/dist/*.blockmap
+            app/dist/latest.yml
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
