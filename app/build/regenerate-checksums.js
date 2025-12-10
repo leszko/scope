@@ -35,11 +35,14 @@ function findExeFile() {
 async function regenerateBlockmap(exeFilePath) {
   console.log(`Regenerating blockmap for: ${exeFilePath}`);
 
-  // Use electron-builder's blockmap tool (same tool it uses internally)
   const blockmapPath = `${exeFilePath}.blockmap`;
 
   try {
-    execSync(`npx blockmap --input "${exeFilePath}" --output "${blockmapPath}"`, {
+    // Use app-builder from electron-builder to generate blockmap
+    const appBuilderPath = require.resolve('app-builder-bin/app-builder');
+    const command = `"${appBuilderPath}" blockmap --input="${exeFilePath}" --output="${blockmapPath}"`;
+
+    execSync(command, {
       stdio: 'inherit',
       cwd: path.join(__dirname, '..')
     });
