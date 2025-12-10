@@ -76,10 +76,7 @@ jobs:
           trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\app\dist
-          files-folder-filter: exe,dll
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
+          files-folder-filter: exe
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') && env.AZURE_CLIENT_ID != ''
