@@ -99,7 +99,7 @@ nsis:
   displayLanguageSelector: false
   menuCategory: false
   runAfterFinish: true
-  artifactName: ${productName}-Setup-${version}-${arch}.${ext}
+  artifactName: Daydream.Scope-Setup-${version}-${arch}.${ext}
   include: build/win/installer.nsh # Custom script for UV installation during setup
 
 # Linux configuration
