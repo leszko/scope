@@ -81,18 +81,12 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
-      - name: Regenerate blockmap and checksums after signing
-        if: env.AZURE_CLIENT_ID != ''
-        working-directory: ./app
-        run: node build/regenerate-checksums.js
-
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') && env.AZURE_CLIENT_ID != ''
         uses: softprops/action-gh-release@v1
         with:
           files: |
             app/dist/*.exe
-            app/dist/*.blockmap
             app/dist/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
