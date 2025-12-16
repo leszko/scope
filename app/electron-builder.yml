@@ -86,7 +86,7 @@ win:
   verifyUpdateCodeSignature: true
   sign: false # Skip code signing (disable to avoid privilege errors on Windows)
   signDlls: false # Skip DLL signing
-  signAndEditExecutable: false # Prevent signing and editing executables
+  signAndEditExecutable: true
 
 nsis:
   oneClick: false
