@@ -92,7 +92,7 @@ nsis:
   oneClick: false
   perMachine: false # Per-user installation (best practice - no admin required)
   allowToChangeInstallationDirectory: true
-  createDesktopShortcut: always
+  createDesktopShortcut: optional
   createStartMenuShortcut: true
   shortcutName: Daydream Scope
   installerIcon: assets/icon.ico
