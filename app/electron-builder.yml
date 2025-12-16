@@ -118,8 +118,7 @@ linux:
   desktop: build/linux/daydream-scope.desktop
   synopsis: A tool for running and customizing real-time, interactive generative AI pipelines and models
   description: >
-    Daydream Scope enables real-time AI-powered video generation and streaming
-    using state-of-the-art diffusion models.
+    A tool for running and customizing real-time, interactive generative AI pipelines and models
   maintainer: Daydream <info@daydream.live>
 
 # Debian package configuration
