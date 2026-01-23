@@ -117,6 +117,10 @@ dev = [
     "pytest>=8.4.2",
     "freezegun>=1.5.5",
 ]
+realesrgan = [
+    "py-real-esrgan>=2.0.0",
+    "Pillow>=10.0.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

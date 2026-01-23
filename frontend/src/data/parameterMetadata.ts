@@ -60,12 +60,12 @@ export const PARAMETER_METADATA: Record<string, ParameterMetadata> = {
   upscale: {
     label: "Upscaling:",
     tooltip:
-      "Enable upscaling of output video frames. Bilinear is fastest, Bicubic is balanced, Real-ESRGAN provides best quality but is slower.",
+      "Enable upscaling of output video frames. Bilinear/Bicubic increase resolution but don't improve quality (just make frames larger). Real-ESRGAN can actually enhance quality but is slower and requires the realesrgan package.",
   },
   upscaleMethod: {
     label: "Upscale Method:",
     tooltip:
-      "Upscaling algorithm: Bilinear (fast, basic), Bicubic (balanced), Real-ESRGAN (best quality, requires realesrgan package), Lanczos (uses bicubic fallback).",
+      "Upscaling algorithm: Bilinear/Bicubic/Lanczos (fast, increases size only - no quality improvement). Real-ESRGAN (AI-based, can enhance quality but slower, requires: pip install realesrgan).",
   },
   upscaleFactor: {
     label: "Scale Factor:",

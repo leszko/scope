@@ -98,6 +98,8 @@ export interface SettingsState {
     targetHeight?: number;
     targetWidth?: number;
   };
+  // Camera resolution (only applies when using camera input)
+  cameraResolution?: number; // 512, 256, 128, or 64
 }
 
 export interface PipelineInfo {

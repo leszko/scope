@@ -94,6 +94,13 @@ class VideoProcessingTrack(MediaStreamTrack):
 
     def initialize_output_processing(self):
         if not self.frame_processor:
+            logger.info(
+                f"🎬 Initializing FrameProcessor with initial_parameters: {list(self.initial_parameters.keys())}"
+            )
+            if "upscale" in self.initial_parameters:
+                logger.info(
+                    f"🎯 UPSCALE in initial_parameters: {self.initial_parameters['upscale']}"
+                )
             self.frame_processor = FrameProcessor(
                 pipeline_manager=self.pipeline_manager,
                 initial_parameters=self.initial_parameters,

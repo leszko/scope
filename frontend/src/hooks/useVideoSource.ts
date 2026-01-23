@@ -12,6 +12,8 @@ interface UseVideoSourceProps {
     width: number;
     height: number;
   }) => void;
+  // Camera resolution (512, 256, 128, or 64)
+  cameraResolution?: number;
 }
 
 // Standardized FPS for both video and camera modes
@@ -138,17 +140,22 @@ export function useVideoSource(props?: UseVideoSourceProps) {
       setError(null);
       setIsInitializing(true);
 
+      // Get camera resolution from props, default to 512
+      const resolution = props?.cameraResolution ?? 512;
+      const minResolution = Math.max(64, resolution / 2);
+      const maxResolution = resolution;
+
       // Request camera access - browser will handle device selection
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 512, min: 256, max: 512 },
-          height: { ideal: 512, min: 256, max: 512 },
+          width: { ideal: resolution, min: minResolution, max: maxResolution },
+          height: { ideal: resolution, min: minResolution, max: maxResolution },
           frameRate: { ideal: FPS, min: MIN_FPS, max: MAX_FPS },
         },
         audio: false,
       });
 
-      setVideoResolution({ width: 512, height: 512 });
+      setVideoResolution({ width: resolution, height: resolution });
       setLocalStream(stream);
       setIsInitializing(false);
       return stream;
@@ -160,7 +167,7 @@ export function useVideoSource(props?: UseVideoSourceProps) {
       setIsInitializing(false);
       return null;
     }
-  }, []);
+  }, [props?.cameraResolution]);
 
   const switchMode = useCallback(
     async (newMode: VideoSourceMode) => {

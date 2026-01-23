@@ -18,7 +18,7 @@ interface SliderWithInputProps {
   className?: string;
   labelClassName?: string;
   debounceMs?: number;
-  valueFormatter?: (value: number) => number;
+  valueFormatter?: (value: number) => number | string;
   inputParser?: (value: string) => number;
   renderExtraButton?: () => React.ReactNode;
 }
@@ -56,34 +56,54 @@ export function SliderWithInput({
 }: SliderWithInputProps) {
   const handleIncrement = () => {
     const newValue = Math.min(max, value + incrementAmount);
-    const formattedValue = valueFormatter(newValue);
-    onValueChange(formattedValue);
-    onValueCommit?.(formattedValue);
+    // valueFormatter is for display only, pass numeric value to callbacks
+    const numericValue =
+      typeof valueFormatter(newValue) === "number"
+        ? (valueFormatter(newValue) as number)
+        : newValue;
+    onValueChange(numericValue);
+    onValueCommit?.(numericValue);
   };
 
   const handleDecrement = () => {
     const newValue = Math.max(min, value - incrementAmount);
-    const formattedValue = valueFormatter(newValue);
-    onValueChange(formattedValue);
-    onValueCommit?.(formattedValue);
+    // valueFormatter is for display only, pass numeric value to callbacks
+    const numericValue =
+      typeof valueFormatter(newValue) === "number"
+        ? (valueFormatter(newValue) as number)
+        : newValue;
+    onValueChange(numericValue);
+    onValueCommit?.(numericValue);
   };
 
   const handleInputChange = (inputValue: string) => {
     const parsedValue = inputParser(inputValue);
     const clampedValue = Math.max(min, Math.min(max, parsedValue));
-    const formattedValue = valueFormatter(clampedValue);
-    onValueChange(formattedValue);
-    onValueCommit?.(formattedValue);
+    // valueFormatter is for display only, pass numeric value to callbacks
+    const numericValue =
+      typeof valueFormatter(clampedValue) === "number"
+        ? (valueFormatter(clampedValue) as number)
+        : clampedValue;
+    onValueChange(numericValue);
+    onValueCommit?.(numericValue);
   };
 
   const handleSliderValueChange = (newValue: number[]) => {
-    const formattedValue = valueFormatter(newValue[0]);
-    onValueChange(formattedValue);
+    // valueFormatter is for display only, pass numeric value to callbacks
+    const numericValue =
+      typeof valueFormatter(newValue[0]) === "number"
+        ? (valueFormatter(newValue[0]) as number)
+        : newValue[0];
+    onValueChange(numericValue);
   };
 
   const handleSliderCommit = (newValue: number[]) => {
-    const formattedValue = valueFormatter(newValue[0]);
-    onValueCommit?.(formattedValue);
+    // valueFormatter is for display only, pass numeric value to callbacks
+    const numericValue =
+      typeof valueFormatter(newValue[0]) === "number"
+        ? (valueFormatter(newValue[0]) as number)
+        : newValue[0];
+    onValueCommit?.(numericValue);
   };
 
   return (

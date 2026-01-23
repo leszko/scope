@@ -163,7 +163,13 @@ class WebRTCManager:
                 initial_parameters = request.initialParameters.model_dump(
                     exclude_none=True
                 )
-            logger.info(f"Received initial parameters: {initial_parameters}")
+            logger.info(f"📥 Received initial parameters: {initial_parameters}")
+            if "upscale" in initial_parameters:
+                logger.info(
+                    f"🎯 UPSCALE found in initial parameters: {initial_parameters['upscale']}"
+                )
+            else:
+                logger.debug("ℹ️  No upscale in initial parameters")
 
             # Create new RTCPeerConnection with configuration
             pc = RTCPeerConnection(self.rtc_config)
@@ -263,7 +269,13 @@ class WebRTCManager:
                     try:
                         # Parse the JSON message
                         data = json.loads(message)
-                        logger.info(f"Received parameter update: {data}")
+                        logger.info(f"📨 Received parameter update: {data}")
+
+                        # Log if upscale is in the update
+                        if "upscale" in data:
+                            logger.info(
+                                f"🎯 UPSCALE parameter found in update: {data['upscale']}"
+                            )
 
                         # Check for paused parameter and call pause() method on video track
                         if "paused" in data and session.video_track:
@@ -273,6 +285,9 @@ class WebRTCManager:
                         if session.video_track and hasattr(
                             session.video_track, "frame_processor"
                         ):
+                            logger.debug(
+                                f"📤 Forwarding parameters to frame processor: {list(data.keys())}"
+                            )
                             session.video_track.frame_processor.update_parameters(data)
                         else:
                             logger.warning(

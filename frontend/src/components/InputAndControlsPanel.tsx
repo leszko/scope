@@ -79,6 +79,9 @@ interface InputAndControlsPanelProps {
   extensionMode?: ExtensionMode;
   onExtensionModeChange?: (mode: ExtensionMode) => void;
   onSendExtensionFrames?: () => void;
+  // Camera resolution (only applies when using camera input)
+  cameraResolution?: number;
+  onCameraResolutionChange?: (resolution: number) => void;
 }
 
 export function InputAndControlsPanel({
@@ -133,6 +136,8 @@ export function InputAndControlsPanel({
   extensionMode = "firstframe",
   onExtensionModeChange,
   onSendExtensionFrames,
+  cameraResolution = 512,
+  onCameraResolutionChange,
 }: InputAndControlsPanelProps) {
   // Helper function to determine if playhead is at the end of timeline
   const isAtEndOfTimeline = () => {
@@ -229,6 +234,34 @@ export function InputAndControlsPanel({
                 </ToggleGroupItem>
               )}
             </ToggleGroup>
+
+            {/* Camera resolution selector - only show when camera mode is selected */}
+            {mode === "camera" && (
+              <div className="mt-3">
+                <LabelWithTooltip
+                  label="Camera Resolution:"
+                  tooltip="Select the resolution for camera input. Lower resolutions reduce bandwidth and processing load."
+                  className="text-xs text-muted-foreground mb-2 block"
+                />
+                <Select
+                  value={cameraResolution.toString()}
+                  onValueChange={value => {
+                    onCameraResolutionChange?.(parseInt(value, 10));
+                  }}
+                  disabled={isStreaming || isConnecting}
+                >
+                  <SelectTrigger className="w-full h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="512">512×512</SelectItem>
+                    <SelectItem value="256">256×256 (2× less)</SelectItem>
+                    <SelectItem value="128">128×128 (4× less)</SelectItem>
+                    <SelectItem value="64">64×64 (8× less)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         )}
 

@@ -336,6 +336,13 @@ export function useWebRTC(options?: UseWebRTCOptions) {
       images?: string[];
       first_frame_image?: string;
       last_frame_image?: string;
+      upscale?: {
+        enabled: boolean;
+        method: "bilinear" | "bicubic" | "realesrgan" | "lanczos";
+        scale_factor: number;
+        target_height?: number;
+        target_width?: number;
+      };
     }) => {
       if (
         dataChannelRef.current &&

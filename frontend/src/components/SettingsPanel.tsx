@@ -980,7 +980,7 @@ export function SettingsPanel({
               {/* Scale Factor */}
               <div className="space-y-2">
                 <SliderWithInput
-                  label={PARAMETER_METADATA.upscaleFactor.label}
+                  label={`${PARAMETER_METADATA.upscaleFactor.label} (${upscaleFactorSlider.localValue.toFixed(1)}x)`}
                   tooltip={PARAMETER_METADATA.upscaleFactor.tooltip}
                   value={upscaleFactorSlider.localValue}
                   onValueChange={upscaleFactorSlider.handleValueChange}
@@ -994,8 +994,7 @@ export function SettingsPanel({
                     (upscale?.targetHeight !== undefined &&
                       upscale?.targetWidth !== undefined)
                   }
-                  labelClassName="text-xs text-muted-foreground w-24"
-                  valueFormatter={v => v.toFixed(1) + "x"}
+                  labelClassName="text-xs text-muted-foreground w-32"
                   inputParser={v => {
                     const parsed = parseFloat(v);
                     return isNaN(parsed)

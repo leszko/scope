@@ -24,6 +24,7 @@ import type {
   LoraMergeStrategy,
   DownloadProgress,
   VaeType,
+  SettingsState,
 } from "../types";
 import type { PromptItem, PromptTransition } from "../lib/api";
 import {
@@ -220,6 +221,7 @@ export function StreamPage() {
         resolution: { height: resolution.height, width: resolution.width },
       });
     },
+    cameraResolution: settings.cameraResolution ?? 512,
   });
 
   const handlePromptsSubmit = (prompts: PromptItem[]) => {
@@ -722,6 +724,21 @@ export function StreamPage() {
     });
   };
 
+  // Handle camera resolution change
+  const handleCameraResolutionChange = (resolution: number) => {
+    updateSettings({
+      cameraResolution: resolution,
+    });
+    // Reinitialize camera with new resolution if currently in camera mode
+    if (mode === "camera" && settings.inputMode === "video") {
+      setShouldReinitializeVideo(true);
+      setTimeout(
+        () => setShouldReinitializeVideo(false),
+        VIDEO_REINITIALIZE_DELAY_MS
+      );
+    }
+  };
+
   // Sync spoutReceiver.enabled with mode changes
   const handleModeChange = (newMode: typeof mode) => {
     // When switching to spout mode, enable spout input
@@ -1214,6 +1231,8 @@ export function StreamPage() {
             extensionMode={settings.extensionMode || "firstframe"}
             onExtensionModeChange={handleExtensionModeChange}
             onSendExtensionFrames={handleSendExtensionFrames}
+            cameraResolution={settings.cameraResolution ?? 512}
+            onCameraResolutionChange={handleCameraResolutionChange}
           />
         </div>
 

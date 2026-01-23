@@ -76,6 +76,7 @@ class FrameProcessor:
         self.upscale_factor = 1.0
         self.upscale_target_height: int | None = None
         self.upscale_target_width: int | None = None
+        self._frame_count = 0  # Counter for logging
 
         # Input mode is signaled by the frontend at stream start.
         # This determines whether we wait for video frames or generate immediately.
@@ -108,6 +109,7 @@ class FrameProcessor:
         # Process any upscaling settings from initial parameters
         if "upscale" in self.parameters:
             upscale_config = self.parameters.pop("upscale")
+            logger.info(f"📥 Processing initial upscale config: {upscale_config}")
             self._update_upscaler(upscale_config)
 
         if not self.pipeline_ids:
@@ -212,16 +214,63 @@ class FrameProcessor:
             frame = last_processor.output_queue.get_nowait()
             # Frame is stored as [1, H, W, C]
 
+            # Log first 3 frames and then every 30th frame to avoid spam
+            self._frame_count += 1
+            should_log = self._frame_count <= 3 or self._frame_count % 30 == 0
+
+            if should_log:
+                logger.info(
+                    f"📥 Frame #{self._frame_count} retrieved: shape={frame.shape}, device={frame.device}, "
+                    f"upscale_enabled={self.upscale_enabled}, upscaler={self.upscaler is not None}"
+                )
+
             # Apply upscaling if enabled
-            if self.upscale_enabled and self.upscaler is not None:
-                try:
-                    frame = self.upscaler.upscale(
-                        frame,
-                        target_height=self.upscale_target_height,
-                        target_width=self.upscale_target_width,
+            if self.upscale_enabled:
+                if should_log:
+                    logger.info(
+                        f"🔍 Upscaling check: enabled={self.upscale_enabled}, "
+                        f"upscaler={self.upscaler is not None}, frame_shape={frame.shape}"
                     )
-                except Exception as e:
-                    logger.error(f"Error during upscaling: {e}")
+                if self.upscaler is not None:
+                    original_shape = frame.shape
+                    original_device = frame.device
+                    try:
+                        if should_log:
+                            logger.info(
+                                f"🎨 Applying upscaling to frame #{self._frame_count}: input_shape={original_shape}, "
+                                f"method={self.upscale_method.value}, scale={self.upscale_factor}, "
+                                f"target_size={self.upscale_target_width}x{self.upscale_target_height}"
+                            )
+                        frame = self.upscaler.upscale(
+                            frame,
+                            target_height=self.upscale_target_height,
+                            target_width=self.upscale_target_width,
+                        )
+                        if should_log:
+                            logger.info(
+                                f"✅ Frame #{self._frame_count} upscaled successfully: {original_shape} -> {frame.shape} "
+                                f"(device: {original_device} -> {frame.device})"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"❌ Error during upscaling frame #{self._frame_count}: {e}. "
+                            f"Frame shape: {frame.shape}, device: {frame.device}, "
+                            f"upscaler enabled: {self.upscale_enabled}, upscaler: {self.upscaler}"
+                        )
+                        import traceback
+
+                        logger.error(traceback.format_exc())
+                else:
+                    if should_log:
+                        logger.warning(
+                            f"⚠️ Upscaling is enabled but upscaler is None! "
+                            f"enabled={self.upscale_enabled}, upscaler={self.upscaler}"
+                        )
+            elif should_log:
+                logger.info(
+                    f"⏭️ Upscaling disabled, skipping frame #{self._frame_count}. "
+                    f"enabled={self.upscale_enabled}, frame_shape={frame.shape}"
+                )
 
             # Convert to [H, W, C] for output
             # Move to CPU here for WebRTC streaming (frames stay on GPU between pipeline processors)
@@ -283,6 +332,7 @@ class FrameProcessor:
         # Handle upscaling settings
         if "upscale" in parameters:
             upscale_config = parameters.pop("upscale")
+            logger.info(f"📥 Received upscale parameter update: {upscale_config}")
             self._update_upscaler(upscale_config)
 
         # Update parameters for all pipeline processors
@@ -550,7 +600,7 @@ class FrameProcessor:
 
     def _update_upscaler(self, config: dict):
         """Update upscaling configuration."""
-        logger.info(f"Upscaling config received: {config}")
+        logger.info(f"🔧 Upscaling config received: {config}")
 
         enabled = config.get("enabled", False)
         method = config.get("method", "bicubic")
@@ -572,7 +622,7 @@ class FrameProcessor:
             target_width = None
 
         logger.info(
-            f"Upscaling: enabled={enabled}, method={method}, "
+            f"📊 Upscaling params: enabled={enabled}, method={method}, "
             f"scale_factor={scale_factor}, target_size={target_width}x{target_height}"
         )
         logger.debug(
@@ -584,6 +634,9 @@ class FrameProcessor:
             # Enable upscaling
             try:
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                logger.info(
+                    f"🚀 Creating upscaler: method={method}, scale={scale_factor}, device={device}"
+                )
                 self.upscaler = Upscaler(
                     method=method,
                     scale_factor=scale_factor,
@@ -594,17 +647,24 @@ class FrameProcessor:
                 self.upscale_factor = scale_factor
                 self.upscale_target_height = target_height
                 self.upscale_target_width = target_width
-                logger.info(f"Upscaling enabled: method={method}, scale={scale_factor}")
+                logger.info(
+                    f"✅ Upscaling ENABLED: method={method}, scale={scale_factor}, "
+                    f"target={target_width}x{target_height}, device={device}"
+                )
             except Exception as e:
-                logger.error(f"Error creating upscaler: {e}")
+                logger.error(f"❌ Error creating upscaler: {e}")
+                import traceback
+
+                logger.error(traceback.format_exc())
                 self.upscaler = None
                 self.upscale_enabled = False
 
         elif not enabled and self.upscale_enabled:
             # Disable upscaling
+            logger.info("🛑 Disabling upscaling")
             self.upscaler = None
             self.upscale_enabled = False
-            logger.info("Upscaling disabled")
+            logger.info("✅ Upscaling DISABLED")
 
         elif enabled and (
             method != self.upscale_method.value
@@ -615,6 +675,10 @@ class FrameProcessor:
             # Settings changed, recreate upscaler
             try:
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                logger.info(
+                    f"🔄 Updating upscaler: method={method} (was {self.upscale_method.value}), "
+                    f"scale={scale_factor} (was {self.upscale_factor}), device={device}"
+                )
                 self.upscaler = Upscaler(
                     method=method,
                     scale_factor=scale_factor,
@@ -625,11 +689,14 @@ class FrameProcessor:
                 self.upscale_target_height = target_height
                 self.upscale_target_width = target_width
                 logger.info(
-                    f"Upscaling updated: method={method}, scale={scale_factor}, "
+                    f"✅ Upscaling UPDATED: method={method}, scale={scale_factor}, "
                     f"target_size={target_width}x{target_height}"
                 )
             except Exception as e:
-                logger.error(f"Error recreating upscaler: {e}")
+                logger.error(f"❌ Error recreating upscaler: {e}")
+                import traceback
+
+                logger.error(traceback.format_exc())
                 self.upscaler = None
                 self.upscale_enabled = False
 
