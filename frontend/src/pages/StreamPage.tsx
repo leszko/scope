@@ -563,6 +563,32 @@ export function StreamPage() {
     // Note: Adding/removing LoRAs requires pipeline reload
   };
 
+  const handleUpscaleChange = (upscale: SettingsState["upscale"]) => {
+    updateSettings({ upscale });
+
+    // If streaming, send update to backend
+    if (isStreaming && upscale?.enabled) {
+      sendParameterUpdate({
+        upscale: {
+          enabled: true,
+          method: upscale.method,
+          scale_factor: upscale.scaleFactor,
+          target_height: upscale.targetHeight,
+          target_width: upscale.targetWidth,
+        },
+      });
+    } else if (isStreaming && !upscale?.enabled) {
+      // Disable upscaling
+      sendParameterUpdate({
+        upscale: {
+          enabled: false,
+          method: "bicubic",
+          scale_factor: 1.0,
+        },
+      });
+    }
+  };
+
   const handleVaceEnabledChange = (enabled: boolean) => {
     updateSettings({ vaceEnabled: enabled });
     // Note: This setting requires pipeline reload, so we don't send parameter update here
@@ -987,6 +1013,13 @@ export function StreamPage() {
         first_frame_image?: string;
         last_frame_image?: string;
         images?: string[];
+        upscale?: {
+          enabled: boolean;
+          method: "bilinear" | "bicubic" | "realesrgan" | "lanczos";
+          scale_factor: number;
+          target_height?: number;
+          target_width?: number;
+        };
       } = {
         // Signal the intended input mode to the backend so it doesn't
         // briefly fall back to text mode before video frames arrive
@@ -1060,6 +1093,17 @@ export function StreamPage() {
       }
       if (settings.spoutReceiver?.enabled) {
         initialParameters.spout_receiver = settings.spoutReceiver;
+      }
+
+      // Upscaling settings - send if enabled
+      if (settings.upscale?.enabled) {
+        initialParameters.upscale = {
+          enabled: true,
+          method: settings.upscale.method,
+          scale_factor: settings.upscale.scaleFactor,
+          target_height: settings.upscale.targetHeight,
+          target_width: settings.upscale.targetWidth,
+        };
       }
 
       // Reset paused state when starting a fresh stream
@@ -1390,6 +1434,8 @@ export function StreamPage() {
             onPreprocessorIdsChange={handlePreprocessorIdsChange}
             postprocessorIds={settings.postprocessorIds ?? []}
             onPostprocessorIdsChange={handlePostprocessorIdsChange}
+            upscale={settings.upscale}
+            onUpscaleChange={handleUpscaleChange}
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ from aiortc.mediastreams import VideoFrame
 
 from .pipeline_manager import PipelineManager
 from .pipeline_processor import PipelineProcessor
+from .upscaler import UpscaleMethod, Upscaler
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,14 @@ class FrameProcessor:
         self.spout_receiver_name = ""
         self.spout_receiver_thread = None
 
+        # Upscaling
+        self.upscaler: Upscaler | None = None
+        self.upscale_enabled = False
+        self.upscale_method = UpscaleMethod.BICUBIC
+        self.upscale_factor = 1.0
+        self.upscale_target_height: int | None = None
+        self.upscale_target_width: int | None = None
+
         # Input mode is signaled by the frontend at stream start.
         # This determines whether we wait for video frames or generate immediately.
         self._video_mode = (initial_parameters or {}).get("input_mode") == "video"
@@ -95,6 +104,11 @@ class FrameProcessor:
         if "spout_receiver" in self.parameters:
             spout_config = self.parameters.pop("spout_receiver")
             self._update_spout_receiver(spout_config)
+
+        # Process any upscaling settings from initial parameters
+        if "upscale" in self.parameters:
+            upscale_config = self.parameters.pop("upscale")
+            self._update_upscaler(upscale_config)
 
         if not self.pipeline_ids:
             logger.error("No pipeline IDs provided, cannot start")
@@ -196,7 +210,20 @@ class FrameProcessor:
 
         try:
             frame = last_processor.output_queue.get_nowait()
-            # Frame is stored as [1, H, W, C], convert to [H, W, C] for output
+            # Frame is stored as [1, H, W, C]
+
+            # Apply upscaling if enabled
+            if self.upscale_enabled and self.upscaler is not None:
+                try:
+                    frame = self.upscaler.upscale(
+                        frame,
+                        target_height=self.upscale_target_height,
+                        target_width=self.upscale_target_width,
+                    )
+                except Exception as e:
+                    logger.error(f"Error during upscaling: {e}")
+
+            # Convert to [H, W, C] for output
             # Move to CPU here for WebRTC streaming (frames stay on GPU between pipeline processors)
             frame = frame.squeeze(0).cpu()
 
@@ -252,6 +279,11 @@ class FrameProcessor:
         if "spout_receiver" in parameters:
             spout_config = parameters.pop("spout_receiver")
             self._update_spout_receiver(spout_config)
+
+        # Handle upscaling settings
+        if "upscale" in parameters:
+            upscale_config = parameters.pop("upscale")
+            self._update_upscaler(upscale_config)
 
         # Update parameters for all pipeline processors
         for processor in self.pipeline_processors:
@@ -515,6 +547,91 @@ class FrameProcessor:
                 time.sleep(0.01)
 
         logger.info(f"Spout input thread stopped after {frame_count} frames")
+
+    def _update_upscaler(self, config: dict):
+        """Update upscaling configuration."""
+        logger.info(f"Upscaling config received: {config}")
+
+        enabled = config.get("enabled", False)
+        method = config.get("method", "bicubic")
+        scale_factor = config.get("scale_factor", 2.0)
+        target_height = config.get("target_height")
+        target_width = config.get("target_width")
+
+        # Validate scale factor
+        if scale_factor < 1.0:
+            logger.warning(f"Invalid scale_factor {scale_factor}, must be >= 1.0")
+            scale_factor = 1.0
+
+        # Validate target dimensions
+        if target_height is not None and target_height < 1:
+            logger.warning(f"Invalid target_height {target_height}, ignoring")
+            target_height = None
+        if target_width is not None and target_width < 1:
+            logger.warning(f"Invalid target_width {target_width}, ignoring")
+            target_width = None
+
+        logger.info(
+            f"Upscaling: enabled={enabled}, method={method}, "
+            f"scale_factor={scale_factor}, target_size={target_width}x{target_height}"
+        )
+        logger.debug(
+            f"Current upscale state: enabled={self.upscale_enabled}, "
+            f"upscaler={self.upscaler is not None}, method={getattr(self, 'upscale_method', None)}"
+        )
+
+        if enabled and not self.upscale_enabled:
+            # Enable upscaling
+            try:
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self.upscaler = Upscaler(
+                    method=method,
+                    scale_factor=scale_factor,
+                    device=device,
+                )
+                self.upscale_enabled = True
+                self.upscale_method = UpscaleMethod(method)
+                self.upscale_factor = scale_factor
+                self.upscale_target_height = target_height
+                self.upscale_target_width = target_width
+                logger.info(f"Upscaling enabled: method={method}, scale={scale_factor}")
+            except Exception as e:
+                logger.error(f"Error creating upscaler: {e}")
+                self.upscaler = None
+                self.upscale_enabled = False
+
+        elif not enabled and self.upscale_enabled:
+            # Disable upscaling
+            self.upscaler = None
+            self.upscale_enabled = False
+            logger.info("Upscaling disabled")
+
+        elif enabled and (
+            method != self.upscale_method.value
+            or scale_factor != self.upscale_factor
+            or target_height != self.upscale_target_height
+            or target_width != self.upscale_target_width
+        ):
+            # Settings changed, recreate upscaler
+            try:
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self.upscaler = Upscaler(
+                    method=method,
+                    scale_factor=scale_factor,
+                    device=device,
+                )
+                self.upscale_method = UpscaleMethod(method)
+                self.upscale_factor = scale_factor
+                self.upscale_target_height = target_height
+                self.upscale_target_width = target_width
+                logger.info(
+                    f"Upscaling updated: method={method}, scale={scale_factor}, "
+                    f"target_size={target_width}x{target_height}"
+                )
+            except Exception as e:
+                logger.error(f"Error recreating upscaler: {e}")
+                self.upscaler = None
+                self.upscale_enabled = False
 
     def _setup_pipeline_chain_sync(self):
         """Create pipeline processor chain (synchronous).

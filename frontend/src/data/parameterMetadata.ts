@@ -57,6 +57,31 @@ export const PARAMETER_METADATA: Record<string, ParameterMetadata> = {
     tooltip:
       "Quantization method for the diffusion model. fp8_e4m3fn (Dynamic) reduces memory usage, but might affect performance and quality. None uses full precision and uses more memory, but does not affect performance and quality.",
   },
+  upscale: {
+    label: "Upscaling:",
+    tooltip:
+      "Enable upscaling of output video frames. Bilinear is fastest, Bicubic is balanced, Real-ESRGAN provides best quality but is slower.",
+  },
+  upscaleMethod: {
+    label: "Upscale Method:",
+    tooltip:
+      "Upscaling algorithm: Bilinear (fast, basic), Bicubic (balanced), Real-ESRGAN (best quality, requires realesrgan package), Lanczos (uses bicubic fallback).",
+  },
+  upscaleFactor: {
+    label: "Scale Factor:",
+    tooltip:
+      "Multiplier for upscaling (e.g., 2.0 = 2x upscaling). Ignored if target dimensions are set.",
+  },
+  upscaleTargetHeight: {
+    label: "Target Height:",
+    tooltip:
+      "Target height in pixels. If set, overrides scale factor for height.",
+  },
+  upscaleTargetWidth: {
+    label: "Target Width:",
+    tooltip:
+      "Target width in pixels. If set, overrides scale factor for width.",
+  },
   kvCacheAttentionBias: {
     label: "Cache Bias:",
     tooltip:

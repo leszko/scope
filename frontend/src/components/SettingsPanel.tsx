@@ -101,6 +101,9 @@ interface SettingsPanelProps {
   // Postprocessors
   postprocessorIds?: string[];
   onPostprocessorIdsChange?: (ids: string[]) => void;
+  // Upscaling settings
+  upscale?: SettingsState["upscale"];
+  onUpscaleChange?: (upscale: SettingsState["upscale"]) => void;
 }
 
 export function SettingsPanel({
@@ -149,6 +152,8 @@ export function SettingsPanel({
   onPreprocessorIdsChange,
   postprocessorIds = [],
   onPostprocessorIdsChange,
+  upscale,
+  onUpscaleChange,
 }: SettingsPanelProps) {
   // Local slider state management hooks
   const noiseScaleSlider = useLocalSliderValue(noiseScale, onNoiseScaleChange);
@@ -159,6 +164,19 @@ export function SettingsPanel({
   const vaceContextScaleSlider = useLocalSliderValue(
     vaceContextScale,
     onVaceContextScaleChange
+  );
+  const upscaleFactorSlider = useLocalSliderValue(
+    upscale?.scaleFactor ?? 2.0,
+    (value: number) => {
+      onUpscaleChange?.({
+        ...upscale,
+        enabled: upscale?.enabled ?? false,
+        method: upscale?.method ?? "bicubic",
+        scaleFactor: value,
+        targetHeight: upscale?.targetHeight,
+        targetWidth: upscale?.targetWidth,
+      });
+    }
   );
 
   // Validation error states
@@ -898,6 +916,157 @@ export function SettingsPanel({
             </div>
           </div>
         )}
+
+        {/* Upscaling Settings */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <LabelWithTooltip
+              label={PARAMETER_METADATA.upscale.label}
+              tooltip={PARAMETER_METADATA.upscale.tooltip}
+              className="text-sm text-foreground"
+            />
+            <Toggle
+              pressed={upscale?.enabled ?? false}
+              onPressedChange={enabled => {
+                onUpscaleChange?.({
+                  enabled,
+                  method: upscale?.method ?? "bicubic",
+                  scaleFactor: upscale?.scaleFactor ?? 2.0,
+                  targetHeight: upscale?.targetHeight,
+                  targetWidth: upscale?.targetWidth,
+                });
+              }}
+              variant="outline"
+              size="sm"
+              className="h-7"
+            >
+              {upscale?.enabled ? "ON" : "OFF"}
+            </Toggle>
+          </div>
+
+          {upscale?.enabled && (
+            <div className="space-y-3 pl-2 border-l-2 border-muted">
+              {/* Upscale Method */}
+              <div className="space-y-2">
+                <LabelWithTooltip
+                  label={PARAMETER_METADATA.upscaleMethod.label}
+                  tooltip={PARAMETER_METADATA.upscaleMethod.tooltip}
+                  className="text-xs text-muted-foreground"
+                />
+                <Select
+                  value={upscale?.method ?? "bicubic"}
+                  onValueChange={(
+                    value: "bilinear" | "bicubic" | "realesrgan" | "lanczos"
+                  ) => {
+                    onUpscaleChange?.({
+                      ...upscale,
+                      method: value,
+                    });
+                  }}
+                  disabled={isStreaming}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bilinear">Bilinear</SelectItem>
+                    <SelectItem value="bicubic">Bicubic</SelectItem>
+                    <SelectItem value="realesrgan">Real-ESRGAN</SelectItem>
+                    <SelectItem value="lanczos">Lanczos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Scale Factor */}
+              <div className="space-y-2">
+                <SliderWithInput
+                  label={PARAMETER_METADATA.upscaleFactor.label}
+                  tooltip={PARAMETER_METADATA.upscaleFactor.tooltip}
+                  value={upscaleFactorSlider.localValue}
+                  onValueChange={upscaleFactorSlider.handleValueChange}
+                  onValueCommit={upscaleFactorSlider.handleValueCommit}
+                  min={1.0}
+                  max={4.0}
+                  step={0.1}
+                  incrementAmount={0.1}
+                  disabled={
+                    isStreaming ||
+                    (upscale?.targetHeight !== undefined &&
+                      upscale?.targetWidth !== undefined)
+                  }
+                  labelClassName="text-xs text-muted-foreground w-24"
+                  valueFormatter={v => v.toFixed(1) + "x"}
+                  inputParser={v => {
+                    const parsed = parseFloat(v);
+                    return isNaN(parsed)
+                      ? 1.0
+                      : Math.max(1.0, Math.min(4.0, parsed));
+                  }}
+                />
+                {(upscale?.targetHeight !== undefined ||
+                  upscale?.targetWidth !== undefined) && (
+                  <p className="text-xs text-muted-foreground">
+                    Scale factor disabled when target dimensions are set
+                  </p>
+                )}
+              </div>
+
+              {/* Optional: Target Dimensions */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <LabelWithTooltip
+                    label={PARAMETER_METADATA.upscaleTargetWidth.label}
+                    tooltip={PARAMETER_METADATA.upscaleTargetWidth.tooltip}
+                    className="text-xs text-muted-foreground w-24"
+                  />
+                  <Input
+                    type="number"
+                    value={upscale?.targetWidth ?? ""}
+                    onChange={e => {
+                      const value =
+                        e.target.value === ""
+                          ? undefined
+                          : parseInt(e.target.value, 10);
+                      onUpscaleChange?.({
+                        ...upscale,
+                        targetWidth: value && value > 0 ? value : undefined,
+                      });
+                    }}
+                    disabled={isStreaming}
+                    className="h-8 text-sm flex-1"
+                    placeholder="Auto"
+                    min={1}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <LabelWithTooltip
+                    label={PARAMETER_METADATA.upscaleTargetHeight.label}
+                    tooltip={PARAMETER_METADATA.upscaleTargetHeight.tooltip}
+                    className="text-xs text-muted-foreground w-24"
+                  />
+                  <Input
+                    type="number"
+                    value={upscale?.targetHeight ?? ""}
+                    onChange={e => {
+                      const value =
+                        e.target.value === ""
+                          ? undefined
+                          : parseInt(e.target.value, 10);
+                      onUpscaleChange?.({
+                        ...upscale,
+                        targetHeight: value && value > 0 ? value : undefined,
+                      });
+                    }}
+                    disabled={isStreaming}
+                    className="h-8 text-sm flex-1"
+                    placeholder="Auto"
+                    min={1}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Spout Sender Settings (available on native Windows only) */}
         {spoutAvailable && (

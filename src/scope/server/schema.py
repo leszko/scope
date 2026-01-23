@@ -149,6 +149,10 @@ class Parameters(BaseModel):
         default=None,
         description="List of reference image paths for non-VACE visual conditioning",
     )
+    upscale: "UpscaleConfig | None" = Field(
+        default=None,
+        description="Upscaling configuration for output video frames. Can be enabled/disabled and configured at runtime.",
+    )
 
 
 class SpoutConfig(BaseModel):
@@ -156,6 +160,37 @@ class SpoutConfig(BaseModel):
 
     enabled: bool = Field(default=False, description="Enable Spout")
     name: str = Field(default="", description="Spout sender name")
+
+
+class UpscaleConfig(BaseModel):
+    """Configuration for video upscaling."""
+
+    enabled: bool = Field(
+        default=False, description="Enable upscaling of output video frames"
+    )
+    method: Literal["bilinear", "bicubic", "realesrgan", "lanczos"] = Field(
+        default="bicubic",
+        description=(
+            "Upscaling method: 'bilinear' (fast, basic quality), "
+            "'bicubic' (balanced, good quality), 'realesrgan' (slow, best quality, requires realesrgan package), "
+            "'lanczos' (uses bicubic as fallback)"
+        ),
+    )
+    scale_factor: float = Field(
+        default=2.0,
+        ge=1.0,
+        description="Scale factor for upscaling (e.g., 2.0 for 2x upscaling). Ignored if target_height/width are set.",
+    )
+    target_height: int | None = Field(
+        default=None,
+        ge=1,
+        description="Target height in pixels. If set, overrides scale_factor for height.",
+    )
+    target_width: int | None = Field(
+        default=None,
+        ge=1,
+        description="Target width in pixels. If set, overrides scale_factor for width.",
+    )
 
 
 class WebRTCOfferRequest(BaseModel):

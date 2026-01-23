@@ -90,6 +90,14 @@ export interface SettingsState {
   preprocessorIds?: string[];
   // Postprocessors
   postprocessorIds?: string[];
+  // Upscaling settings
+  upscale?: {
+    enabled: boolean;
+    method: "bilinear" | "bicubic" | "realesrgan" | "lanczos";
+    scaleFactor: number;
+    targetHeight?: number;
+    targetWidth?: number;
+  };
 }
 
 export interface PipelineInfo {
