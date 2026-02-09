@@ -41,7 +41,7 @@ afterPack: build/afterPack.js
 # Publishing configuration for auto-updates
 publish:
   - provider: github
-    owner: daydreamlive
+    owner: leszko
     repo: scope
     private: false
 
