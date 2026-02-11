@@ -199,6 +199,7 @@ jobs:
           files: |
             app/dist/DaydreamScope-x64.dmg
             app/dist/DaydreamScope-arm64.dmg
+            app/dist/*.zip
             app/dist/latest-mac.yml
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
         env:

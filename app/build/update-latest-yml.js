@@ -82,13 +82,14 @@ releaseDate: ${new Date().toISOString()}
 // macOS
 // ---------------------------------------------------------------------------
 
-function findDmgFile(arch) {
-  const expected = `DaydreamScope-${arch}.dmg`;
-  const filePath = path.join(DIST_DIR, expected);
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`DMG not found: ${filePath}`);
+function findZipFile(arch) {
+  const files = fs.readdirSync(DIST_DIR);
+  // Match zip files with the architecture in the name
+  const zipFile = files.find(f => f.endsWith('.zip') && f.includes(arch));
+  if (!zipFile) {
+    throw new Error(`ZIP not found for arch ${arch} in ${DIST_DIR}`);
   }
-  return filePath;
+  return path.join(DIST_DIR, zipFile);
 }
 
 function updateLatestYmlMac() {
@@ -98,8 +99,8 @@ function updateLatestYmlMac() {
   const version = packageJson.version;
   const releaseDate = new Date().toISOString();
 
-  const arm64Path = findDmgFile('arm64');
-  const x64Path = findDmgFile('x64');
+  const arm64Path = findZipFile('arm64');
+  const x64Path = findZipFile('x64');
 
   const arm64Name = path.basename(arm64Path);
   const x64Name = path.basename(x64Path);

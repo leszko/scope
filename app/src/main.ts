@@ -54,7 +54,13 @@ autoUpdater.on('update-available', (info) => {
     cancelId: 1
   }).then(result => {
     if (result.response === 0) {
-      autoUpdater.downloadUpdate();
+      autoUpdater.downloadUpdate().catch(err => {
+        logger.error('Failed to download update:', err);
+        dialog.showErrorBox(
+          'Update Download Failed',
+          `Failed to download the update: ${err.message}\n\nPlease try again later or download the update manually.`
+        );
+      });
     }
   });
 });
@@ -65,6 +71,10 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
   logger.error('Auto-updater error:', err);
+  dialog.showErrorBox(
+    'Update Error',
+    `An error occurred during the update process: ${err.message}`
+  );
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
