@@ -110,11 +110,12 @@ jobs:
     name: Build macOS
     runs-on: macos-latest
     env:
-      MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
-      MACOS_SIGNING_CERT: ${{ secrets.MACOS_SIGNING_CERT }}
-      MACOS_SIGNING_CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
-      MACOS_NOTARIZATION_USERNAME: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
-      MACOS_NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+      # Map CI_MACOS_* secrets to env vars used by certificate import and electron-builder
+      MACOS_SIGNING_IDENTITY: ${{ secrets.CI_MACOS_CERTIFICATE_ID }}
+      MACOS_SIGNING_CERT: ${{ secrets.CI_MACOS_CERTIFICATE_BASE64 }}
+      MACOS_SIGNING_CERT_PASSWORD: ${{ secrets.CI_MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_NOTARIZATION_USERNAME: ${{ secrets.CI_MACOS_NOTARIZATION_USER }}
+      MACOS_NOTARIZATION_PASSWORD: ${{ secrets.CI_MACOS_NOTARIZATION_PASSWORD }}
 
     steps:
       - name: Checkout repository
