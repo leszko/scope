@@ -42,8 +42,8 @@ afterSign: build/mac/notarize.js
 # Publishing configuration for auto-updates
 publish:
   - provider: github
-    owner: daydreamlive
-    repo: scope-test
+    owner: leszko
+    repo: scope
     private: false
 
 # macOS configuration
