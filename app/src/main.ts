@@ -37,39 +37,68 @@ autoUpdater.disableDifferentialDownload = true; // Disable differential download
 let updateDownloaded = false;
 
 autoUpdater.on('checking-for-update', () => {
+  log.info('Checking for updates...');
   logger.info('Checking for updates...');
 });
 
 autoUpdater.on('update-available', (info) => {
+  log.info('Update available:', info);
   logger.info('Update available:', info);
 
-  // Notify user about available update
-  dialog.showMessageBox({
-    type: 'info',
+  // Use main window as parent so the dialog is properly modal on macOS (fixes "Download" doing nothing)
+  const parentWindow =
+    appState.mainWindow && !appState.mainWindow.isDestroyed() ? appState.mainWindow : null;
+  const boxOpts = {
+    type: 'info' as const,
     title: 'Update Available',
     message: `A new version ${info.version} is available!`,
     detail: 'Would you like to download it now? The app will restart after the update is installed.',
     buttons: ['Download', 'Later'],
     defaultId: 0,
     cancelId: 1
-  }).then(result => {
-    if (result.response === 0) {
-      autoUpdater.downloadUpdate().catch(err => {
-        logger.error('Failed to download update:', err);
-        dialog.showErrorBox(
-          'Update Download Failed',
-          `Failed to download the update: ${err.message}\n\nPlease try again later or download the update manually.`
-        );
-      });
-    }
-  });
+  };
+
+  const boxPromise = parentWindow
+    ? dialog.showMessageBox(parentWindow, boxOpts)
+    : dialog.showMessageBox(boxOpts);
+
+  boxPromise
+    .then(result => {
+      if (result.response === 0) {
+        log.info('User chose Download – starting update download');
+        logger.info('User chose Download – starting update download');
+        autoUpdater
+          .downloadUpdate()
+          .then(() => {
+            log.info('downloadUpdate() completed (update will apply on restart)');
+            logger.info('downloadUpdate() completed (update will apply on restart)');
+          })
+          .catch(err => {
+            log.error('Failed to download update:', err);
+            logger.error('Failed to download update:', err);
+            dialog.showErrorBox(
+              'Update Download Failed',
+              `Failed to download the update: ${err.message}\n\nPlease try again later or download the update manually.`
+            );
+          });
+      } else {
+        log.info('User chose Later – skipping update download');
+        logger.info('User chose Later – skipping update download');
+      }
+    })
+    .catch(dialogErr => {
+      log.error('Update-available dialog error:', dialogErr);
+      logger.error('Update-available dialog error:', dialogErr);
+    });
 });
 
 autoUpdater.on('update-not-available', (info) => {
+  log.info('Update not available:', info);
   logger.info('Update not available:', info);
 });
 
 autoUpdater.on('error', (err) => {
+  log.error('Auto-updater error:', err);
   logger.error('Auto-updater error:', err);
   dialog.showErrorBox(
     'Update Error',
@@ -78,29 +107,47 @@ autoUpdater.on('error', (err) => {
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
+  log.info(`Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}%`);
   logger.info(`Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}%`);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
+  log.info('Update downloaded:', info);
   logger.info('Update downloaded:', info);
   updateDownloaded = true;
 
-  // Notify user that update is ready
-  dialog.showMessageBox({
-    type: 'info',
+  const parentWindow =
+    appState.mainWindow && !appState.mainWindow.isDestroyed() ? appState.mainWindow : null;
+  const readyOpts = {
+    type: 'info' as const,
     title: 'Update Ready',
     message: 'Update has been downloaded.',
     detail: 'The update will be installed when you quit the application. You can also restart now to install it.',
     buttons: ['Restart Now', 'Later'],
     defaultId: 0,
     cancelId: 1
-  }).then(result => {
-    if (result.response === 0) {
-      // Quit and install
-      autoUpdater.quitAndInstall(false, true);
-    }
-  });
+  };
+  (parentWindow ? dialog.showMessageBox(parentWindow, readyOpts) : dialog.showMessageBox(readyOpts))
+    .then(result => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
 });
+
+/**
+ * Call once at startup so we know where main process logs are written.
+ * electron-log: macOS ~/Library/Logs/{app name}/main.log
+ */
+function logMainProcessLogPath(): void {
+  try {
+    const mainLogPath = log.transports.file.getFile().path;
+    log.info('Main process log file:', mainLogPath);
+    logger.info('Main process log file:', mainLogPath);
+  } catch (e) {
+    log.warn('Could not resolve main process log path', e);
+  }
+}
 
 // IPC Rate Limiting Configuration
 const IPC_RATE_LIMITS = {
@@ -838,6 +885,8 @@ function configureProcessSecurity(): void {
  * Application ready handler
  */
 app.on('ready', async () => {
+  logMainProcessLogPath();
+
   // Configure session permissions early
   await configureSessionPermissions();
 

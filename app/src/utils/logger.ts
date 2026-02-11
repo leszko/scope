@@ -90,20 +90,29 @@ if (!fs.existsSync(LOG_DIR)) {
 
 const logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
 
+function appendSync(message: string): void {
+  try {
+    fs.appendFileSync(LOG_FILE, message);
+  } catch {
+    // Fallback to stream if appendFileSync fails (e.g. LOG_FILE not yet valid)
+    logStream.write(message);
+  }
+}
+
 export const logger = {
   info: (...args: any[]) => {
     const message = `[INFO] ${new Date().toISOString()} ${args.map(String).join(' ')}\n`;
     process.stdout.write(message);
-    logStream.write(message);
+    appendSync(message);
   },
   error: (...args: any[]) => {
     const message = `[ERROR] ${new Date().toISOString()} ${args.map(String).join(' ')}\n`;
     process.stderr.write(message);
-    logStream.write(message);
+    appendSync(message);
   },
   warn: (...args: any[]) => {
     const message = `[WARN] ${new Date().toISOString()} ${args.map(String).join(' ')}\n`;
     process.stdout.write(message);
-    logStream.write(message);
+    appendSync(message);
   },
 };
