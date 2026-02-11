@@ -65,6 +65,9 @@ mac:
         - x64
         - arm64
 
+zip:
+  artifactName: DaydreamScope-${version}-${os}-${arch}.${ext}
+
 dmg:
   artifactName: DaydreamScope-${arch}.${ext}
   contents:
