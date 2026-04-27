@@ -12,11 +12,13 @@ def is_hopper_gpu():
     device_name = torch.cuda.get_device_name(0).lower()
     return "h100" in device_name or "hopper" in device_name
 
+
 def is_b200_gpu():
     if not torch.cuda.is_available():
         return False
     device_name = torch.cuda.get_device_name(0).lower()
     return "b200" in device_name
+
 
 FLASH_ATTN_3_AVAILABLE = False
 
